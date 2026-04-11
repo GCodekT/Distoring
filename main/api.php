@@ -90,7 +90,7 @@ if ($action === 'sensors') {
             SELECT 
                 s.id, s.device_id, s.name, s.latitude, s.longitude,
                 s.is_precise_location, s.first_seen, s.last_seen,
-                sd.voltage, sd.charge_percent, sd.roll_angle, sd.pitch_angle,
+                sd.voltage, sd.charge_percent, sd.roll_angle, sd.pitch_angle, sd.temperature
                 sd.status, sd.timestamp as last_data_time
             FROM sensors s
             LEFT JOIN sensor_data sd ON s.id = sd.sensor_id
@@ -365,7 +365,7 @@ if ($action === 'my_sensors') {
                 COALESCE(us.custom_latitude, s.latitude) as latitude,
                 COALESCE(us.custom_longitude, s.longitude) as longitude,
                 s.is_precise_location, us.notifications_enabled, s.last_seen,
-                sd.voltage, sd.charge_percent, sd.roll_angle, sd.pitch_angle,
+                sd.voltage, sd.charge_percent, sd.roll_angle, sd.pitch_angle, sd.temperature
                 sd.status, sd.timestamp as last_data_time
             FROM user_sensors us
             JOIN sensors s ON us.sensor_id = s.id
