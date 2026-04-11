@@ -1,0 +1,108 @@
+# Distoring.ru - Apache Configuration
+
+# 1. Включаем движок перенаправлений
+RewriteEngine On
+
+# 2. Правильный редирект на HTTPS для SprintHost (без циклической ошибки)
+# Проверяем стандартный HTTPS или заголовок от прокси-сервера
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# 3. ПРОБРОС ТОКЕНА (Самое важное для вашего API!)
+# Без этих строк Apache удаляет заголовок Authorization, и PHP его не видит
+RewriteCond %{HTTP:Authorization} ^(.*)
+RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
+
+# Защита config.php от прямого доступа
+<Files "config.php">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# Защита database.sql от прямого доступа
+<Files "database.sql">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# Защита файлов с точкой (например .htaccess, .git)
+<FilesMatch "^\.">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Кодировка UTF-8
+AddDefaultCharset UTF-8
+
+# Включить сжатие
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>
+
+# Кеширование статических файлов
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+</IfModule>
+
+# Защита от hotlinking изображений (опционально)
+# RewriteCond %{HTTP_REFERER} !^$
+# RewriteCond %{HTTP_REFERER} !^https://(www\.)?distoring\.ru [NC]
+# RewriteRule \.(jpg|jpeg|png|gif|svg)$ - [F,L]
+
+# Индексный файл
+DirectoryIndex index.html index.php
+
+# Отключить листинг директорий
+Options -Indexes
+
+# Защита от XSS
+<IfModule mod_headers.c>
+    Header set X-XSS-Protection "1; mode=block"
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Ограничение размера загружаемых файлов (если нужно)
+# php_value upload_max_filesize 10M
+# php_value post_max_size 10M
+
+# Ограничение времени выполнения PHP
+php_value max_execution_time 30
+php_value max_input_time 30
+
+# Ограничение памяти PHP
+php_value memory_limit 128M
+
+php_value session.gc_maxlifetime 2592000
+php_value session.cookie_lifetime 2592000
+
+# Отображение ошибок (только для разработки, отключите в продакшене!)
+# php_flag display_errors On
+# php_flag display_startup_errors On
+# php_value error_reporting E_ALL
+
+# В продакшене используйте:
+php_flag display_errors Off
+php_flag log_errors On
+php_value error_log /home/username/logs/php_errors.log
+
+# Защита от SQL инъекций через URL
+<IfModule mod_rewrite.c>
+    RewriteCond %{QUERY_STRING} (\<|%3C).*script.*(\>|%3E) [NC,OR]
+    RewriteCond %{QUERY_STRING} GLOBALS(=|\[|\%[0-9A-Z]{0,2}) [OR]
+    RewriteCond %{QUERY_STRING} _REQUEST(=|\[|\%[0-9A-Z]{0,2})
+    RewriteRule ^(.*)$ index.html [F,L]
+</IfModule>
+
+# Кастомные страницы ошибок (создайте эти файлы при необходимости)
+# ErrorDocument 404 /404.html
+# ErrorDocument 403 /403.html
+# ErrorDocument 500 /500.html

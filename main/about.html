@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>О проекте - IoT Sensor Monitoring</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #151933;
+            --accent: #00d4ff;
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa0a6;
+            --border: #2d3451;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 60px 24px;
+        }
+        h1 {
+            font-size: 48px;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, var(--accent) 0%, #0084ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        h2 {
+            font-size: 32px;
+            margin: 48px 0 24px;
+            color: var(--accent);
+        }
+        p {
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+            margin: 48px 0;
+        }
+        .feature-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+        }
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        .feature-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: var(--accent);
+            color: #000;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-top: 24px;
+        }
+        .btn:hover {
+            background: #00b8e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>О проекте</h1>
+        <p style="font-size: 20px; color: var(--text-primary);">
+            IoT Sensor Monitoring - это открытая платформа для мониторинга датчиков на базе Arduino и GSM модулей в реальном времени.
+        </p>
+        
+        <h2>🎯 Цель проекта</h2>
+        <p>
+            Создать простую и доступную систему для отслеживания IoT устройств с минимальными требованиями к оборудованию.
+            Любой человек с базовыми знаниями Arduino может создать свой датчик и подключить его к системе.
+        </p>
+        
+        <h2>✨ Возможности</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🗺️</div>
+                <div class="feature-title">Интерактивная карта</div>
+                <p>Визуализация всех датчиков на карте мира в реальном времени</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <div class="feature-title">Графики и статистика</div>
+                <p>Детальный анализ данных с интерактивными графиками</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔐</div>
+                <div class="feature-title">Система аккаунтов</div>
+                <p>Управление своими датчиками через личный кабинет</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📡</div>
+                <div class="feature-title">GSM модули</div>
+                <p>Поддержка SIM800L и определение координат по вышкам</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🌐</div>
+                <div class="feature-title">REST API</div>
+                <p>Полноценный API для интеграции с другими сервисами</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🚀</div>
+                <div class="feature-title">Open Source</div>
+                <p>Полностью открытый исходный код для модификации</p>
+            </div>
+        </div>
+        
+        <h2>🛠 Технологии</h2>
+        <p><strong>Backend:</strong> PHP 7.4+, MySQL, REST API</p>
+        <p><strong>Frontend:</strong> HTML5, CSS3, JavaScript (ES6+), Leaflet.js, Chart.js</p>
+        <p><strong>Hardware:</strong> Arduino (Nano/Uno), MPU6050, SIM800L GSM модуль</p>
+        
+        <h2>📖 Как начать?</h2>
+        <p>
+            1. Соберите датчик на базе Arduino + SIM800L + MPU6050<br>
+            2. Прошейте код с уникальным идентификатором<br>
+            3. Датчик автоматически появится на карте после первой отправки данных<br>
+            4. Зарегистрируйтесь и добавьте датчик в свой аккаунт
+        </p>
+        
+        <h2>💡 Применение</h2>
+        <p>
+            • Мониторинг наклона объектов (здания, мосты, столбы)<br>
+            • Охранные системы с датчиками движения<br>
+            • Мониторинг транспорта и логистики<br>
+            • Экологический мониторинг<br>
+            • Умный дом и автоматизация<br>
+            • Учебные проекты и исследования
+        </p>
+        
+        <a href="index.html" class="btn">← Вернуться на главную</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distoring.ru - IoT Sensor Monitoring</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='28'>📡</text></svg>">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
+            <span>Distoring</span>
+        </div>
+        <div class="header-actions">
+            <button class="btn" id="btnAbout">О проекте</button>
+            <button class="btn" id="btnSupport">Поддержка</button>
+            <button class="btn btn-primary" id="btnAuth">Вход / Регистрация</button>
+        </div>
+    </div>
+    
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <input type="text" class="search-box" id="searchBox" placeholder="Поиск датчика по ID...">
+            <div class="filter-tabs">
+                <div class="filter-tab active" data-filter="all">Все датчики</div>
+                <div class="filter-tab" data-filter="my">Мои датчики</div>
+            </div>
+        </div>
+        <div class="sensors-list" id="sensorsList">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Загрузка датчиков...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="toggle-sidebar" id="toggleSidebar">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+        </svg>
+    </div>
+    
+    <div id="map"></div>
+    
+    <div class="modal" id="authModal">
+        <div class="modal-content">
+            <div class="modal-header" id="authModalTitle">Вход в систему</div>
+            <div id="authError"></div>
+            <div id="authSuccess"></div>
+            <div id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">Email или телефон</label>
+                    <input type="text" class="form-input" id="loginInput" placeholder="example@email.com или +7...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" class="form-input" id="loginPassword" placeholder="Введите пароль">
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-block" onclick="closeAuthModal()">Отмена</button>
+                    <button class="btn btn-primary btn-block" onclick="login()">Войти</button>
+                </div>
+                <div style="text-align: center; margin-top: 16px; color: var(--text-secondary); font-size: 14px;">
+                    Нет аккаунта? <a href="#" onclick="showRegisterForm(); return false;" style="color: var(--accent);">Зарегистрироваться</a>
+                </div>
+            </div>
+            <div id="registerForm" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="regEmail" placeholder="example@email.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Телефон (опционально)</label>
+                    <input type="tel" class="form-input" id="regPhone" placeholder="+7...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Имя</label>
+                    <input type="text" class="form-input" id="regName" placeholder="Ваше имя">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" class="form-input" id="regPassword" placeholder="Минимум 6 символов">
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-block" onclick="closeAuthModal()">Отмена</button>
+                    <button class="btn btn-primary btn-block" onclick="register()">Зарегистрироваться</button>
+                </div>
+                <div style="text-align: center; margin-top: 16px; color: var(--text-secondary); font-size: 14px;">
+                    Уже есть аккаунт? <a href="#" onclick="showLoginForm(); return false;" style="color: var(--accent);">Войти</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
