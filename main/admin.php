@@ -203,7 +203,7 @@ $sensors = $db->query("
                 <input type="number" step="0.0001" name="default_lng" value="37.6173" placeholder="Долгота">
                 <button type="submit" class="btn">Установить всем датчикам без координат</button>
             </form>
-            <small style="color: #9aa0a6;">По умолчанию: Москва (55.7558, 37.6173)</small>
+            <small style="color: #9aa0a6;">По умолчанию: Новосибирск (55.0144, 82.9429)</small>
         </div>
         <?php endif; ?>
         

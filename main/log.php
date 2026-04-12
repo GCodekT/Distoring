@@ -32,7 +32,7 @@ if (empty($deviceId)) {
 
 
 // Парсинг данных (порядок в строке может быть любым, но обычно V,C,R,P,S,T)
-if (!preg_match('/V:([\d.]+).*?C:(\d+).*?R:([-\d.]+).*?P:([-\d.]+)(?:.*?S:([A-Z_]+))?(?:.*?T:([\d.-]+))?/i', $data, $matches)) {
+if (!preg_match('/V:([\d.]+).*?C:(\d+).*?R:([-\d.]+).*?P:([-\d.]+)(?:.*?T:([\d.-]+))?(?:.*?S:([A-Z_]+))?/i', $data, $matches)) {
     logDebug("Invalid data format: $data");
     echo "ERROR: Invalid data format";
     exit;
@@ -42,8 +42,8 @@ $voltage     = (float)($matches[1] ?? 0);
 $charge      = (int)($matches[2] ?? 0);
 $roll        = (float)($matches[3] ?? 0);
 $pitch       = (float)($matches[4] ?? 0);
-$status      = !empty($matches[5]) ? strtoupper(trim($matches[5])) : 'OK';
-$temperature = !empty($matches[6]) ? (float)$matches[6] : null;
+$temperature = !empty($matches[5]) ? (float)$matches[5] : null;  // Теперь T на группе 5
+$status      = !empty($matches[6]) ? strtoupper(trim($matches[6])) : 'OK';  // S на группе 6
 
 try {
     $db = Database::getInstance()->getConnection();
