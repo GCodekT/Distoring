@@ -17,6 +17,10 @@ SoftwareSerial GSMport(8, 9);
 MPU6050 mpu;
 uint8_t fifoBuffer[64];
 
+// ── Дефолтные координаты Новосибирска ──
+const float DEFAULT_LAT = 55.028739;
+const float DEFAULT_LON = 82.920532;
+
 // ── Параметры батареи ──
 const float R1         = 9900.0;
 const float R2         = 4600.0;
@@ -31,8 +35,6 @@ const float BAT_CUTOFF = 9.3;
 String currentStatus = "OK";
 
 // ── Флаг выхода из цикла при разряде ──
-// Когда true — runSessions() немедленно завершается,
-// управление возвращается в loop(), и только оттуда уходим в сон.
 bool lowBatteryFlag = false;
 
 // ── WDT: 8 сек × 15 = 120 сек = 2 минуты ──
@@ -56,7 +58,6 @@ int readBatteryPercent() {
   return (int)((v - BAT_MIN) / (BAT_MAX - BAT_MIN) * 100.0);
 }
 
-// Двойная проверка с паузой — защита от случайных импульсов/наводок
 bool isBatteryCritical() {
   float v1 = readBatteryVoltage();
   delay(300);
@@ -107,32 +108,25 @@ void sleepTwoMinutes() {
 }
 
 // ====================== ГЛУБОКИЙ СОН ======================
-// Вызывается ТОЛЬКО из loop() — никогда из глубины цикла.
-// К этому моменту сессия уже закрыта, флаг установлен.
 void enterDeepSleep() {
   Serial.println(F("=== КРИТИЧЕСКИЙ ЗАРЯД — ОТКЛЮЧЕНИЕ ==="));
   Serial.flush();
 
-  // Гасим все светодиоды
   digitalWrite(LED_TRANSMIT, LOW);
   digitalWrite(LED_NETWORK,  LOW);
   digitalWrite(LED_POWER,    LOW);
 
-  // Выключаем GSM модуль
   sendAT("AT+CFUN=0", 8000);
 
-  // Отключаем периферию AVR для минимального потребления
   ADCSRA = 0;
   power_all_disable();
 
-  // Запрещаем все прерывания — WDT не запущен, просыпаться некому
   cli();
 
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
   sleep_enable();
   sei();
   sleep_cpu();
-  // сюда не доходим
 }
 
 // ====================== SETUP ======================
@@ -159,10 +153,8 @@ void setup() {
   Serial.print(F("Батарея: ")); Serial.print(v, 2);
   Serial.print(F("В — ")); Serial.print(readBatteryPercent()); Serial.println(F("%"));
 
-  // Двойная проверка при старте
   if (isBatteryCritical()) {
     Serial.println(F("Батарея ниже порога при старте"));
-    // GSM ещё не инициализирован — сразу в сон
     digitalWrite(LED_TRANSMIT, LOW);
     digitalWrite(LED_NETWORK,  LOW);
     digitalWrite(LED_POWER,    LOW);
@@ -187,18 +179,14 @@ void setup() {
 }
 
 // ====================== LOOP ======================
-// Единственное место откуда уходим в глубокий сон.
-// runSessions() выставляет lowBatteryFlag и возвращается —
-// тогда loop() чисто и безопасно вызывает enterDeepSleep().
 void loop() {
   lowBatteryFlag = false;
   runSessions();
 
-  // Сюда попадаем только если runSessions() вышел через lowBatteryFlag
   if (lowBatteryFlag) {
     Serial.println(F("Выход из цикла по разряду — уходим в сон"));
     Serial.flush();
-    delay(200); // дать Serial допечатать
+    delay(200);
     enterDeepSleep();
   }
 }
@@ -210,22 +198,18 @@ void runSessions() {
 
   while (true) {
 
-    // ── Проверка заряда перед сессией ──
     if (isBatteryCritical()) {
       currentStatus = "LOW_BATTERY";
       Serial.println(F("Низкий заряд — последний замер"));
-      // Пробуем отправить последний замер
       if (openSession()) {
         String data = getMeasurement();
         if (data.length() > 0) sendSingleRequest(data);
         closeSession();
       }
-      // Выходим из цикла — НЕ вызываем enterDeepSleep() здесь
       lowBatteryFlag = true;
       return;
     }
 
-    // ── Открыть сессию ──
     if (!openSession()) {
       currentStatus = "MODEM_REINIT";
       full_reinit();
@@ -236,18 +220,16 @@ void runSessions() {
       }
     }
 
-    // ── Два замера ──
     Serial.println(F("--- Сессия: 2 замера ---"));
 
     for (int i = 0; i < 2; i++) {
-      // Проверка заряда внутри цикла замеров
       if (isBatteryCritical()) {
         currentStatus = "LOW_BATTERY";
         String data = getMeasurement();
         if (data.length() > 0) sendSingleRequest(data);
         closeSession();
         lowBatteryFlag = true;
-        return; // выходим из runSessions()
+        return;
       }
 
       String data = getMeasurement();
@@ -276,10 +258,7 @@ void runSessions() {
       if (i == 0) delay(2000);
     }
 
-    // ── Закрыть сессию ──
     closeSession();
-
-    // ── Сон 2 минуты ──
     sleepTwoMinutes();
   }
 }
@@ -402,12 +381,15 @@ String getMeasurement() {
   mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
   float temperature = (rawTemp / 340.0) + 36.53;
 
+  // Отправляем дефолтные координаты Новосибирска
   return "V:" + String(readBatteryVoltage(), 2)
       + ",C:" + String(readBatteryPercent())
       + ",R:" + String(degrees(ypr[1]), 2)
       + ",P:" + String(degrees(ypr[2]), 2)
       + ",T:" + String(temperature, 2)
-      + ",S:" + currentStatus;
+      + ",S:" + currentStatus
+      + ",LA:" + String(DEFAULT_LAT, 6)
+      + ",LO:" + String(DEFAULT_LON, 6);
 }
 
 // ====================== GPRS ======================
