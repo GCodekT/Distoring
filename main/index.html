@@ -8,6 +8,23 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <style>
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        #tzSelect {
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
     <div class="header">
@@ -17,7 +34,19 @@
             </svg>
             <span>Distoring</span>
         </div>
-        <div class="header-actions">
+        <div class="header-controls">
+            <select id="tzSelect">
+                <option value="+3">UTC+3 (Москва)</option>
+                <option value="+4">UTC+4 (Самара)</option>
+                <option value="+5">UTC+5 (Екатеринбург)</option>
+                <option value="+6">UTC+6 (Омск)</option>
+                <option value="+7">UTC+7 (Новосибирск)</option>
+                <option value="+8">UTC+8 (Иркутск)</option>
+                <option value="+9">UTC+9 (Якутск)</option>
+                <option value="+10">UTC+10 (Владивосток)</option>
+                <option value="+11">UTC+11 (Магадан)</option>
+                <option value="+12">UTC+12 (Камчатка)</option>
+            </select>
             <button class="btn" id="btnAbout">О проекте</button>
             <button class="btn" id="btnSupport">Поддержка</button>
             <button class="btn btn-primary" id="btnAuth">Вход / Регистрация</button>
@@ -99,6 +128,7 @@
     </div>
     
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="timezone.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

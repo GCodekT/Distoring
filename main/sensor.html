@@ -43,11 +43,30 @@
             margin-bottom: 32px;
             padding-bottom: 20px;
             border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
         }
         
         .title {
             font-size: 28px;
             font-weight: 600;
+        }
+        
+        #tzSelect {
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            cursor: pointer;
         }
         
         .btn {
@@ -105,6 +124,8 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
         }
         
         .chart-title {
@@ -115,6 +136,7 @@
         .chart-filters {
             display: flex;
             gap: 8px;
+            flex-wrap: wrap;
         }
         
         .filter-btn {
@@ -158,7 +180,21 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="title" id="sensorTitle">Загрузка...</div>
+            <div class="header-left">
+                <div class="title" id="sensorTitle">Загрузка...</div>
+                <select id="tzSelect">
+                    <option value="+3">UTC+3 (Москва)</option>
+                    <option value="+4">UTC+4 (Самара)</option>
+                    <option value="+5">UTC+5 (Екатеринбург)</option>
+                    <option value="+6">UTC+6 (Омск)</option>
+                    <option value="+7">UTC+7 (Новосибирск)</option>
+                    <option value="+8">UTC+8 (Иркутск)</option>
+                    <option value="+9">UTC+9 (Якутск)</option>
+                    <option value="+10">UTC+10 (Владивосток)</option>
+                    <option value="+11">UTC+11 (Магадан)</option>
+                    <option value="+12">UTC+12 (Камчатка)</option>
+                </select>
+            </div>
             <a href="index.html" class="btn">← Назад к карте</a>
         </div>
         
@@ -168,322 +204,64 @@
             <div class="loading">Загрузка данных...</div>
         </div>
         
+        <!-- Заряд батареи -->
         <div class="chart-container">
             <div class="chart-header">
                 <div class="chart-title">Заряд батареи</div>
                 <div class="chart-filters">
-                    <button class="filter-btn active" data-chart="battery" data-period="1">1ч</button>
-                    <button class="filter-btn" data-chart="battery" data-period="6">6ч</button>
-                    <button class="filter-btn" data-chart="battery" data-period="24">24ч</button>
-                    <button class="filter-btn" data-chart="battery" data-period="168">7д</button>
+                    <button class="filter-btn active" data-chart="battery" data-period="60">1ч</button>
+                    <button class="filter-btn" data-chart="battery" data-period="360">6ч</button>
+                    <button class="filter-btn" data-chart="battery" data-period="1440">24ч</button>
+                    <button class="filter-btn" data-chart="battery" data-period="10080">7д</button>
                 </div>
             </div>
             <canvas id="batteryChart"></canvas>
         </div>
         
+        <!-- Крен -->
         <div class="chart-container">
             <div class="chart-header">
                 <div class="chart-title">Крен (Roll)</div>
                 <div class="chart-filters">
-                    <button class="filter-btn active" data-chart="roll" data-period="1">1ч</button>
-                    <button class="filter-btn" data-chart="roll" data-period="6">6ч</button>
-                    <button class="filter-btn" data-chart="roll" data-period="24">24ч</button>
-                    <button class="filter-btn" data-chart="roll" data-period="168">7д</button>
+                    <button class="filter-btn active" data-chart="roll" data-period="60">1ч</button>
+                    <button class="filter-btn" data-chart="roll" data-period="360">6ч</button>
+                    <button class="filter-btn" data-chart="roll" data-period="1440">24ч</button>
+                    <button class="filter-btn" data-chart="roll" data-period="10080">7д</button>
                 </div>
             </div>
             <canvas id="rollChart"></canvas>
         </div>
         
+        <!-- Тангаж -->
         <div class="chart-container">
             <div class="chart-header">
                 <div class="chart-title">Тангаж (Pitch)</div>
                 <div class="chart-filters">
-                    <button class="filter-btn active" data-chart="pitch" data-period="1">1ч</button>
-                    <button class="filter-btn" data-chart="pitch" data-period="6">6ч</button>
-                    <button class="filter-btn" data-chart="pitch" data-period="24">24ч</button>
-                    <button class="filter-btn" data-chart="pitch" data-period="168">7д</button>
+                    <button class="filter-btn active" data-chart="pitch" data-period="60">1ч</button>
+                    <button class="filter-btn" data-chart="pitch" data-period="360">6ч</button>
+                    <button class="filter-btn" data-chart="pitch" data-period="1440">24ч</button>
+                    <button class="filter-btn" data-chart="pitch" data-period="10080">7д</button>
                 </div>
             </div>
             <canvas id="pitchChart"></canvas>
         </div>
-                
+        
+        <!-- Температура -->
         <div class="chart-container">
             <div class="chart-header">
                 <div class="chart-title">Температура (°C)</div>
                 <div class="chart-filters">
-                    <button class="filter-btn active" data-chart="temperature" data-period="1">1ч</button>
-                    <button class="filter-btn" data-chart="temperature" data-period="6">6ч</button>
-                    <button class="filter-btn" data-chart="temperature" data-period="24">24ч</button>
-                    <button class="filter-btn" data-chart="temperature" data-period="168">7д</button>
+                    <button class="filter-btn active" data-chart="temperature" data-period="60">1ч</button>
+                    <button class="filter-btn" data-chart="temperature" data-period="360">6ч</button>
+                    <button class="filter-btn" data-chart="temperature" data-period="1440">24ч</button>
+                    <button class="filter-btn" data-chart="temperature" data-period="10080">7д</button>
                 </div>
             </div>
             <canvas id="temperatureChart"></canvas>
         </div>
     </div>
     
-    <script>
-        const API_URL = 'api.php';
-        const urlParams = new URLSearchParams(window.location.search);
-        const sensorId = urlParams.get('id');
-        
-        let sensorData = null;
-        let history = [];
-        let charts = {};
-        
-        // Load sensor data
-        async function loadSensorData() {
-            try {
-                const response = await fetch(`${API_URL}?action=sensor&id=${sensorId}&hours=168`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    sensorData = data.sensor;
-                    history = data.history
-                    displaySensorInfo();
-                    initCharts();
-                } else {
-                    document.querySelector('.container').innerHTML = 
-                        '<div class="loading">Датчик не найден</div>';
-                }
-            } catch (error) {
-                console.error('Error:', error);
-            }
-        }
-        
-        function displaySensorInfo() {
-            document.getElementById('sensorTitle').textContent = 
-                `${sensorData.name} (${sensorData.device_id})`;
-                
-            const lastData = history[history.length - 1];
-                
-            if (lastData && lastData.charge_percent < 20) {
-                document.getElementById('alertContainer').innerHTML = 
-                    '<div class="alert">⚠️ Низкий заряд батареи!</div>';
-            }
-            
-            document.getElementById('statsGrid').innerHTML = `
-                <div class="stat-card">
-                    <div class="stat-label">Напряжение</div>
-                    <div class="stat-value" style="color: var(--accent)">
-                        ${lastData?.voltage || '—'} <span style="font-size: 16px;">В</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Заряд</div>
-                    <div class="stat-value" style="color: ${getBatteryColor(lastData?.charge_percent)}">
-                        ${lastData?.charge_percent || '—'} <span style="font-size: 16px;">%</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Крен</div>
-                    <div class="stat-value" style="color: var(--success)">
-                        ${lastData?.roll_angle || '—'} <span style="font-size: 16px;">°</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Тангаж</div>
-                    <div class="stat-value" style="color: var(--success)">
-                        ${lastData?.pitch_angle || '—'} <span style="font-size: 16px;">°</span>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-label">Температура</div>
-                    <div class="stat-value" style="color: var(--accent)">
-                        ${lastData?.temperature || '—'} <span style="font-size: 16px;">°</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Статус</div>
-                    <div class="stat-value" style="font-size: 16px;">
-                        ${lastData?.status || 'OK'}
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Последнее обновление</div>
-                    <div class="stat-value" style="font-size: 14px;">
-                        ${formatDateTime(lastData?.timestamp)}
-                    </div>
-                </div>
-            `;
-        }
-        
-        function getBatteryColor(percent) {
-            if (!percent) return 'var(--text-secondary)';
-            if (percent > 50) return 'var(--success)';
-            if (percent > 20) return 'var(--warning)';
-            return 'var(--danger)';
-        }
-        
-        function formatDateTime(dateStr) {
-            if (!dateStr) return '—';
-            const date = new Date(dateStr);
-            return date.toLocaleString('ru-RU');
-        }
-        
-        function filterData(hours) {
-            const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
-            return history.filter(d => new Date(d.timestamp) >= cutoff);
-        }
-        
-        function initCharts() {
-            const filtered = filterData(1);
-            
-            // Battery chart
-            charts.battery = new Chart(document.getElementById('batteryChart'), {
-                type: 'line',
-                data: {
-                    labels: filtered.map(d => new Date(d.timestamp).toLocaleTimeString('ru-RU')),
-                    datasets: [{
-                        label: 'Заряд (%)',
-                        data: filtered.map(d => d.charge_percent),
-                        borderColor: '#00d4ff',
-                        backgroundColor: 'rgba(0, 212, 255, 0.1)',
-                        fill: true,
-                        tension: 0.3
-                    }, {
-                        label: 'Напряжение (В)',
-                        data: filtered.map(d => d.voltage),
-                        borderColor: '#9aa0a6',
-                        borderDash: [5, 5],
-                        fill: false,
-                        yAxisID: 'y1'
-                    }]
-                },
-                options: getChartOptions('y', 'y1')
-            });
-            
-            // Roll chart
-            charts.roll = new Chart(document.getElementById('rollChart'), {
-                type: 'line',
-                data: {
-                    labels: filtered.map(d => new Date(d.timestamp).toLocaleTimeString('ru-RU')),
-                    datasets: [{
-                        label: 'Крен (°)',
-                        data: filtered.map(d => d.roll_angle),
-                        borderColor: '#4caf50',
-                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                        fill: true,
-                        tension: 0.3
-                    }]
-                },
-                options: getChartOptions()
-            });
-            
-            // Pitch chart
-            charts.pitch = new Chart(document.getElementById('pitchChart'), {
-                type: 'line',
-                data: {
-                    labels: filtered.map(d => new Date(d.timestamp).toLocaleTimeString('ru-RU')),
-                    datasets: [{
-                        label: 'Тангаж (°)',
-                        data: filtered.map(d => d.pitch_angle),
-                        borderColor: '#ff9800',
-                        backgroundColor: 'rgba(255, 152, 0, 0.1)',
-                        fill: true,
-                        tension: 0.3
-                    }]
-                },
-                options: getChartOptions()
-            });
-
-            charts.temperature = new Chart(document.getElementById('temperatureChart'), {
-                type: 'line',
-                data: {
-                    labels: filtered.map(d => new Date(d.timestamp).toLocaleTimeString('ru-RU')),
-                    datasets: [{
-                        label: 'Температура (°C)',
-                        data: filtered.map(d => d.temperature),
-                        borderColor: '#ff5722',
-                        backgroundColor: 'rgba(255, 87, 34, 0.1)',
-                        fill: true,
-                        tension: 0.3
-                    }]
-                },
-                options: getChartOptions()
-            });
-            
-            setupFilters();
-        }
-        
-        function getChartOptions(yAxisId = 'y', y1AxisId = null) {
-            const options = {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        labels: { color: '#e8eaed' }
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: { color: '#9aa0a6' },
-                        grid: { color: '#2d3451' }
-                    },
-                    [yAxisId]: {
-                        ticks: { color: '#9aa0a6' },
-                        grid: { color: '#2d3451' }
-                    }
-                }
-            };
-            
-            if (y1AxisId) {
-                options.scales[y1AxisId] = {
-                    position: 'right',
-                    ticks: { color: '#9aa0a6' },
-                    grid: { display: false }
-                };
-            }
-            
-            return options;
-        }
-        
-        function setupFilters() {
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const chartName = this.dataset.chart;
-                    const hours = parseInt(this.dataset.period);
-                    
-                    // Update active state
-                    document.querySelectorAll(`.filter-btn[data-chart="${chartName}"]`)
-                        .forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    // Update chart
-                    updateChart(chartName, hours);
-                });
-            });
-        }
-        
-        function updateChart(chartName, hours) {
-            const filtered = filterData(hours);
-            const chart = charts[chartName];
-            
-            chart.data.labels = filtered.map(d => new Date(d.timestamp).toLocaleTimeString('ru-RU'));
-            
-            if (chartName === 'battery') {
-                chart.data.datasets[0].data = filtered.map(d => d.charge_percent);
-                chart.data.datasets[1].data = filtered.map(d => d.voltage);
-            } else if (chartName === 'roll') {
-                chart.data.datasets[0].data = filtered.map(d => d.roll_angle);
-            } else if (chartName === 'pitch') {
-                chart.data.datasets[0].data = filtered.map(d => d.pitch_angle);
-            } else if (chartName === 'temperature') {
-                chart.data.datasets[0].data = filtered.map(d => d.temperature);
-            }
-            
-            chart.update();
-        }
-        
-        // Initialize
-        if (sensorId) {
-            loadSensorData();
-            // Auto-refresh every 30 seconds
-            setInterval(loadSensorData, 30000);
-        } else {
-            document.querySelector('.container').innerHTML = 
-                '<div class="loading">ID датчика не указан</div>';
-        }
-    </script>
+    <script src="timezone.js"></script>
+    <script src="sensor.js"></script>
 </body>
 </html>
