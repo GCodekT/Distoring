@@ -194,9 +194,28 @@ function isRecent(timestamp) {
     return diff < 5;
 }
 
-// Format datetime
+// Получить дату с учётом часовых поясов для расчёта разницы
+function getDateWithTZ(dateStr, tzOffset = currentTZOffset) {
+    if (!dateStr) return new Date();
+    
+    const [datePart, timePart] = dateStr.split(' ');
+    if (!datePart || !timePart) return new Date();
+    
+    const [y, mo, d] = datePart.split('-').map(Number);
+    const [h, mi, s] = timePart.split(':').map(Number);
+    
+    // Создаем дату в UTC (вычитаем смещение источника МСК UTC+3)
+    const utc = new Date(Date.UTC(y, mo - 1, d, h - 3, mi, s));
+    
+    // Применяем целевое смещение
+    utc.setUTCHours(utc.getUTCHours() + tzOffset);
+    
+    return utc;
+}
+
+// Format datetime with timezone support
 function formatDateTime(dateStr) {
-    const date = new Date(dateStr);
+    const date = getDateWithTZ(dateStr);
     const now = new Date();
     const diff = (now - date) / 1000;
     
@@ -481,6 +500,15 @@ function setupEventListeners() {
     // Support
     document.getElementById('btnSupport').addEventListener('click', function() {
         window.location.href = 'support.html';
+    });
+
+    // Перезагружаем при смене часового пояса
+    window.addEventListener('timezoneChanged', function() {
+        if (currentFilter === 'all') {
+            loadSensors();
+        } else if (currentFilter === 'my' && currentUser) {
+            loadMySensors();
+        }
     });
 }
 

@@ -575,3 +575,16 @@ body {
 .maplibregl-ctrl-attrib a {
     color: var(--accent) !important;
 }
+
+/* Масштаб в левом нижнем углу */
+.maplibregl-ctrl-scale {
+    background: transparent !important;
+    border: none !important;
+}
+
+.maplibregl-ctrl-scale-text {
+    background: transparent !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+}
