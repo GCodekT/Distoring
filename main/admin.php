@@ -199,8 +199,8 @@ $sensors = $db->query("
             <h2>Установить координаты по умолчанию</h2>
             <form method="POST" class="form-inline">
                 <input type="hidden" name="action" value="set_default_coords">
-                <input type="number" step="0.0001" name="default_lat" value="55.7558" placeholder="Широта">
-                <input type="number" step="0.0001" name="default_lng" value="37.6173" placeholder="Долгота">
+                <input type="number" step="0.000001" name="default_lat" value="55.014457" placeholder="Широта">
+                <input type="number" step="0.000001" name="default_lng" value="82.942926" placeholder="Долгота">
                 <button type="submit" class="btn">Установить всем датчикам без координат</button>
             </form>
             <small style="color: #9aa0a6;">По умолчанию: Новосибирск (55.0144, 82.9429)</small>
@@ -231,21 +231,21 @@ $sensors = $db->query("
                         <td>
                             <?php if ($sensor['latitude'] && $sensor['longitude']): ?>
                                 <span class="badge badge-success">
-                                    <?= number_format($sensor['latitude'], 4) ?>, <?= number_format($sensor['longitude'], 4) ?>
+                                    <?= number_format($sensor['latitude'], 6) ?>, <?= number_format($sensor['longitude'], 6) ?>
                                 </span>
                                 <form method="POST" class="form-inline" style="margin: 8px 0; display: block;">
                                     <input type="hidden" name="action" value="set_coords">
                                     <input type="hidden" name="sensor_id" value="<?= $sensor['id'] ?>">
-                                    <input type="number" step="0.0001" name="latitude" value="<?= $sensor['latitude'] ?>" placeholder="Широта" style="width: 100px; margin: 0 4px;">
-                                    <input type="number" step="0.0001" name="longitude" value="<?= $sensor['longitude'] ?>" placeholder="Долгота" style="width: 100px; margin: 0 4px;">
+                                    <input type="number" step="0.000001" name="latitude" value="<?= $sensor['latitude'] ?>" placeholder="Широта" style="width: 100px; margin: 0 4px;">
+                                    <input type="number" step="0.000001" name="longitude" value="<?= $sensor['longitude'] ?>" placeholder="Долгота" style="width: 100px; margin: 0 4px;">
                                     <button type="submit" class="btn" style="padding: 4px 8px; font-size: 12px;">Обновить</button>
                                 </form>
                             <?php else: ?>
                                 <form method="POST" class="form-inline" style="margin: 0;">
                                     <input type="hidden" name="action" value="set_coords">
                                     <input type="hidden" name="sensor_id" value="<?= $sensor['id'] ?>">
-                                    <input type="number" step="0.0001" name="latitude" placeholder="Широта" style="width: 100px; margin: 0 4px;">
-                                    <input type="number" step="0.0001" name="longitude" placeholder="Долгота" style="width: 100px; margin: 0 4px;">
+                                    <input type="number" step="0.000001" name="latitude" placeholder="Широта" style="width: 100px; margin: 0 4px;">
+                                    <input type="number" step="0.000001" name="longitude" placeholder="Долгота" style="width: 100px; margin: 0 4px;">
                                     <button type="submit" class="btn" style="padding: 4px 8px; font-size: 12px;">Установить</button>
                                 </form>
                             <?php endif; ?>
