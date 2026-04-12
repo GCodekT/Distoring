@@ -1,6 +1,6 @@
 /**
  * IoT Sensor Monitoring - Frontend Application
- * ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ с сохранением сессии
+ * MapLibre GL JS версия
  */
 
 // Configuration
@@ -12,10 +12,31 @@ let currentUser = null;
 let currentFilter = 'all';
 let selectedSensor = null;
 
+// Стилизация карты (темная тема)
+const MAP_STYLE = {
+    version: 8,
+    sources: {
+        osm: {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '© OpenStreetMap contributors'
+        }
+    },
+    layers: [
+        {
+            id: 'osm',
+            type: 'raster',
+            source: 'osm'
+        }
+    ]
+};
+
 // Initialize application
 document.addEventListener('DOMContentLoaded', function() {
+    initTimezoneSelector(document.getElementById('tzSelect'));
     initMap();
-    checkAuth(); // Проверяем авторизацию ПЕРЕД загрузкой данных
+    checkAuth();
     setupEventListeners();
     
     // Auto-refresh every 30 seconds
@@ -28,18 +49,29 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 30000);
 });
 
-// Initialize Leaflet map
+// Initialize MapLibre map
 function initMap() {
-    map = L.map('map').setView([55.0144, 82.9429], 4);
-    
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 18
-    }).addTo(map);
+    map = new maplibregl.Map({
+        container: 'map',
+        style: MAP_STYLE,
+        center: [82.9429, 55.0144],  // Новосибирск [lon, lat]
+        zoom: 4,
+        pitch: 0,
+        bearing: 0
+    });
+
+    // Добавляем контролы
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+    map.addControl(new maplibregl.ScaleControl(), 'bottom-left');
+
+    // Загружаем датчики после инициализации карты
+    map.on('load', () => {
+        loadSensors();
+    });
 }
 
-// Create custom marker icon
-function createMarkerIcon(sensor) {
+// Create custom marker
+function createMarker(sensor) {
     const isOnline = sensor.last_seen && isRecent(sensor.last_seen);
     const batteryLevel = sensor.charge_percent || 0;
     
@@ -52,36 +84,39 @@ function createMarkerIcon(sensor) {
     
     const isPrecise = sensor.is_precise_location === 1 || sensor.is_precise_location === true;
     
-    return L.divIcon({
-        className: 'custom-marker',
-        html: `
-            <div style="
-                width: 32px;
-                height: 32px;
-                background: ${color};
-                border: 3px solid #fff;
-                border-radius: 50%;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: white;
-                font-size: 16px;
-            ">
-                ${isPrecise ? '📍' : '📡'}
-            </div>
-        `,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
+    // Создаем DOM элемент маркера
+    const el = document.createElement('div');
+    el.className = 'marker';
+    el.style.backgroundColor = color;
+    el.style.width = '40px';
+    el.style.height = '40px';
+    el.style.borderRadius = '50%';
+    el.style.border = '3px solid #fff';
+    el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+    el.style.display = 'flex';
+    el.style.alignItems = 'center';
+    el.style.justifyContent = 'center';
+    el.style.fontSize = '18px';
+    el.style.cursor = 'pointer';
+    el.innerHTML = isPrecise ? '📍' : '📡';
+    
+    // Добавляем маркер на карту
+    const marker = new maplibregl.Marker({ element: el })
+        .setLngLat([sensor.longitude, sensor.latitude])
+        .addTo(map);
+    
+    // Popup
+    const popup = new maplibregl.Popup({ offset: 25 })
+        .setHTML(createPopupContent(sensor));
+    
+    marker.setPopup(popup);
+    
+    // Клик на маркер
+    el.addEventListener('click', () => {
+        popup.addTo(map);
     });
-}
-
-// Check if timestamp is recent
-function isRecent(timestamp) {
-    const now = new Date();
-    const lastSeen = new Date(timestamp);
-    const diff = (now - lastSeen) / 1000 / 60;
-    return diff < 5;
+    
+    markers[sensor.id] = { marker, popup };
 }
 
 // Create popup content
@@ -137,6 +172,14 @@ function createPopupContent(sensor) {
     `;
 }
 
+// Check if timestamp is recent
+function isRecent(timestamp) {
+    const now = new Date();
+    const lastSeen = new Date(timestamp);
+    const diff = (now - lastSeen) / 1000 / 60;
+    return diff < 5;
+}
+
 // Format datetime
 function formatDateTime(dateStr) {
     const date = new Date(dateStr);
@@ -177,7 +220,6 @@ async function loadMySensors() {
     
     try {
         const token = localStorage.getItem('auth_token');
-        console.log('Loading my sensors with token:', token ? 'exists' : 'missing');
         
         if (!token) {
             console.log('No token found');
@@ -192,8 +234,6 @@ async function loadMySensors() {
                 'Authorization': `Bearer ${token}`
             }
         });
-        
-        console.log('My sensors response status:', response.status);
         
         if (response.status === 401) {
             console.log('Token invalid, logging out');
@@ -249,7 +289,7 @@ function displaySensors(sensorList) {
                 <div class="sensor-status">
                     <div class="status-item">
                         <span class="status-badge ${isOnline ? 'online' : 'offline'}"></span>
-                        <span>${isOnline ? 'Онлайн' : 'Оффлайн'}</span>
+                        <span>${isOnline ? 'Онла��н' : 'Оффлайн'}</span>
                     </div>
                     ${sensor.charge_percent ? `
                     <div class="status-item">
@@ -269,22 +309,14 @@ function displaySensors(sensorList) {
 
 // Update map markers
 function updateMap(sensorList) {
-    Object.values(markers).forEach(marker => marker.remove());
+    // Очищаем старые маркеры
+    Object.values(markers).forEach(({ marker }) => marker.remove());
     markers = {};
     
+    // Добавляем новые маркеры
     sensorList.forEach(sensor => {
         if (sensor.latitude && sensor.longitude) {
-            const marker = L.marker(
-                [sensor.latitude, sensor.longitude],
-                { icon: createMarkerIcon(sensor) }
-            ).addTo(map);
-            
-            marker.bindPopup(createPopupContent(sensor), {
-                maxWidth: 320,
-                className: 'custom-popup'
-            });
-            
-            markers[sensor.id] = marker;
+            createMarker(sensor);
         }
     });
 }
@@ -300,9 +332,14 @@ function selectSensor(sensorId) {
     
     const sensor = sensors.find(s => s.id == sensorId);
     if (sensor && sensor.latitude && sensor.longitude) {
-        map.flyTo([sensor.latitude, sensor.longitude], 12);
+        map.flyTo({
+            center: [sensor.longitude, sensor.latitude],
+            zoom: 12,
+            duration: 1500
+        });
+        
         if (markers[sensorId]) {
-            markers[sensorId].openPopup();
+            markers[sensorId].popup.addTo(map);
         }
     }
 }
@@ -373,7 +410,7 @@ function setupEventListeners() {
         mapEl.classList.toggle('fullwidth');
         toggle.classList.toggle('collapsed');
         
-        setTimeout(() => map.invalidateSize(), 300);
+        setTimeout(() => map.resize(), 300);
     });
     
     // Search
@@ -389,7 +426,6 @@ function setupEventListeners() {
     // Filter tabs
     document.querySelectorAll('.filter-tab').forEach(tab => {
         tab.addEventListener('click', function() {
-            // Проверка авторизации для "Мои датчики"
             if (this.dataset.filter === 'my' && !currentUser) {
                 showError('Для просмотра "Мои датчики" необходимо войти в систему');
                 return;
@@ -430,7 +466,6 @@ function setupEventListeners() {
 // Check authentication
 async function checkAuth() {
     const token = localStorage.getItem('auth_token');
-    console.log('Token exists:', !!token);
     
     if (token) {
         try {
@@ -438,10 +473,7 @@ async function checkAuth() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             
-            console.log('Profile response status:', response.status);
-            
             if (response.status === 401) {
-                console.log('Token invalid');
                 localStorage.removeItem('auth_token');
                 currentUser = null;
                 updateAuthUI();
@@ -454,10 +486,8 @@ async function checkAuth() {
             
             if (data.success) {
                 currentUser = data.user;
-                console.log('User authenticated:', currentUser.email);
                 updateAuthUI();
             } else {
-                console.log('Profile failed:', data.error);
                 localStorage.removeItem('auth_token');
             }
         } catch (error) {
@@ -466,13 +496,11 @@ async function checkAuth() {
         }
     }
     
-    // Всегда загружаем датчики после проверки
     loadSensors();
 }
 
 function updateAuthUI() {
     const btn = document.getElementById('btnAuth');
-    console.log('Updating UI, user:', currentUser ? currentUser.email : 'none');
     
     if (currentUser) {
         btn.textContent = currentUser.name || currentUser.email;
@@ -542,24 +570,12 @@ async function login() {
         const data = await response.json();
         
         if (data.success) {
-            // Сохраняем токен
             localStorage.setItem('auth_token', data.token);
-            console.log('Token saved:', data.token);
-            
-            // Устанавливаем пользователя
             currentUser = data.user;
-            console.log('User set:', currentUser);
-            
-            // Обновляем UI
             updateAuthUI();
-            
-            // Закрываем модалку
             closeAuthModal();
-            
-            // Показываем сообщение
             showSuccess('Вход выполнен успешно!');
             
-            // Если на вкладке "Мои датчики" - перезагружаем
             if (currentFilter === 'my') {
                 loadMySensors();
             }
@@ -596,24 +612,12 @@ async function register() {
         });
         
         const data = await response.json();
-        console.log('Register response:', data);
         
         if (data.success) {
-            // Сохраняем токен
             localStorage.setItem('auth_token', data.token);
-            console.log('Token saved:', data.token);
-            
-            // Устанавливаем пользователя
             currentUser = data.user;
-            console.log('User set:', currentUser);
-            
-            // Обновляем UI
             updateAuthUI();
-            
-            // Закрываем модалку
             closeAuthModal();
-            
-            // Показываем сообщение
             showSuccess('Регистрация успешна!');
         } else {
             showAuthError(data.error);
@@ -625,8 +629,6 @@ async function register() {
 }
 
 function logout() {
-    console.log('Logging out');
-    
     const token = localStorage.getItem('auth_token');
     if (token) {
         fetch(`${API_URL}?action=logout`, {
@@ -638,11 +640,8 @@ function logout() {
     localStorage.removeItem('auth_token');
     currentUser = null;
     updateAuthUI();
-    
-    // Переключаемся на все датчики
     currentFilter = 'all';
     document.querySelector('.filter-tab[data-filter="all"]').click();
-    
     showSuccess('Выход выполнен');
 }
 
