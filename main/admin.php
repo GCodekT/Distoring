@@ -72,7 +72,7 @@ $db = Database::getInstance()->getConnection();
 // Обработка действий
 $message = '';
 
-// Установить координаты
+// Установить/обновить координаты
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] === 'set_coords') {
         $sensorId = $_POST['sensor_id'];
@@ -82,13 +82,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $stmt = $db->prepare("UPDATE sensors SET latitude = ?, longitude = ?, is_precise_location = 1 WHERE id = ?");
         $stmt->execute([$lat, $lng, $sensorId]);
         
-        $message = "✓ Координаты установлены для датчика #$sensorId";
+        $message = "✓ Координаты обновлены для датчика #$sensorId";
     }
     
     // Установить координаты по умолчанию для всех
     if ($_POST['action'] === 'set_default_coords') {
-        $lat = $_POST['default_lat'] ?? 55.7558;
-        $lng = $_POST['default_lng'] ?? 37.6173;
+        $lat = $_POST['default_lat'] ?? 55.0144;
+        $lng = $_POST['default_lng'] ?? 82.9429;
         
         $stmt = $db->prepare("UPDATE sensors SET latitude = ?, longitude = ?, is_precise_location = 0 WHERE latitude IS NULL OR longitude IS NULL");
         $stmt->execute([$lat, $lng]);
@@ -233,6 +233,13 @@ $sensors = $db->query("
                                 <span class="badge badge-success">
                                     <?= number_format($sensor['latitude'], 4) ?>, <?= number_format($sensor['longitude'], 4) ?>
                                 </span>
+                                <form method="POST" class="form-inline" style="margin: 8px 0; display: block;">
+                                    <input type="hidden" name="action" value="set_coords">
+                                    <input type="hidden" name="sensor_id" value="<?= $sensor['id'] ?>">
+                                    <input type="number" step="0.0001" name="latitude" value="<?= $sensor['latitude'] ?>" placeholder="Широта" style="width: 100px; margin: 0 4px;">
+                                    <input type="number" step="0.0001" name="longitude" value="<?= $sensor['longitude'] ?>" placeholder="Долгота" style="width: 100px; margin: 0 4px;">
+                                    <button type="submit" class="btn" style="padding: 4px 8px; font-size: 12px;">Обновить</button>
+                                </form>
                             <?php else: ?>
                                 <form method="POST" class="form-inline" style="margin: 0;">
                                     <input type="hidden" name="action" value="set_coords">
