@@ -464,66 +464,114 @@ body {
     }
 }
 
-.maplibregl-popup-content {
-    padding: 0;
+/* ========== MapLibre Popup Styles ========== */
+
+.maplibregl-popup {
+    z-index: 500;
 }
 
-.maplibregl-popup-close-button {
-    display: none;
+.maplibregl-popup-content {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border-radius: 12px !important;
+    padding: 0 !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+    border: 1px solid var(--border) !important;
+    max-width: 320px;
 }
 
 .maplibregl-popup-anchor-top .maplibregl-popup-content {
     margin-top: 12px;
 }
 
-.maplibregl-ctrl-geocoder {
-    max-width: none;
-    width: 300px;
-    margin: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    border-radius: 8px;
-    border: 1px solid var(--border);
+.maplibregl-popup-close-button {
+    background: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+    width: 32px !important;
+    height: 32px !important;
+    right: 8px !important;
+    top: 8px !important;
 }
 
-.maplibregl-ctrl-geocoder input {
-    padding: 12px 16px;
+.maplibregl-popup-close-button:hover {
+    background: var(--accent) !important;
+    color: #000 !important;
+}
+
+/* ========== Timezone Select Styling ========== */
+
+#tzSelect {
+    padding: 8px 12px;
     background: var(--bg-tertiary);
-    border: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
     color: var(--text-primary);
-    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
-.maplibregl-ctrl-geocoder input::placeholder {
-    color: var(--text-secondary);
+#tzSelect:hover {
+    border-color: var(--accent);
 }
 
-.maplibregl-ctrl-geocoder .suggestions {
+#tzSelect:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.1);
+}
+
+#tzSelect option {
     background: var(--bg-secondary);
     color: var(--text-primary);
-    border-radius: 8px;
+    padding: 8px 12px;
 }
 
-.maplibregl-ctrl-geocoder .suggestion {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
+#tzSelect option:hover {
+    background: var(--accent);
+    color: #000;
 }
 
-.maplibregl-ctrl-geocoder .suggestion:hover {
-    background: var(--bg-tertiary);
-}
+/* ========== MapLibre Controls ========== */
 
 .maplibregl-ctrl {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    border-radius: 8px;
-    border: 1px solid var(--border);
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
 }
 
 .maplibregl-ctrl button {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    border: none;
+    background: transparent !important;
+    border: none !important;
+    color: var(--text-primary) !important;
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
 }
 
 .maplibregl-ctrl button:hover {
-    background: var(--bg-tertiary);
+    background: var(--bg-tertiary) !important;
+    color: var(--accent) !important;
+}
+
+.maplibregl-ctrl button:disabled {
+    background: var(--bg-primary) !important;
+    opacity: 0.5;
+    cursor: not-allowed !important;
+}
+
+/* ========== Attribution ========== */
+
+.maplibregl-ctrl-attrib {
+    background: rgba(21, 25, 51, 0.8) !important;
+    color: var(--text-secondary) !important;
+    font-size: 11px !important;
+}
+
+.maplibregl-ctrl-attrib a {
+    color: var(--accent) !important;
 }

@@ -100,20 +100,34 @@ function createMarker(sensor) {
     el.style.cursor = 'pointer';
     el.innerHTML = isPrecise ? '📍' : '📡';
     
-    // Добавляем маркер на карту
-    const marker = new maplibregl.Marker({ element: el })
-        .setLngLat([sensor.longitude, sensor.latitude])
-        .addTo(map);
-    
-    // Popup
-    const popup = new maplibregl.Popup({ offset: 25 })
+    // Создаем popup с правильными опциями
+    const popup = new maplibregl.Popup({ 
+        offset: 25,
+        closeButton: true,
+        closeOnClick: false,
+        className: 'sensor-popup'
+    })
         .setHTML(createPopupContent(sensor));
     
-    marker.setPopup(popup);
+    // Создаем маркер
+    const marker = new maplibregl.Marker({ 
+        element: el,
+        anchor: 'center'
+    })
+        .setLngLat([sensor.longitude, sensor.latitude])
+        .setPopup(popup)
+        .addTo(map);
     
-    // Клик на маркер
-    el.addEventListener('click', () => {
-        popup.addTo(map);
+    // Открываем popup при клике на маркер
+    el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Закрываем все другие popups
+        document.querySelectorAll('.maplibregl-popup').forEach(p => {
+            if (p !== popup.getElement()) {
+                p.style.display = 'none';
+            }
+        });
+        marker.togglePopup();
     });
     
     markers[sensor.id] = { marker, popup };
@@ -339,7 +353,14 @@ function selectSensor(sensorId) {
         });
         
         if (markers[sensorId]) {
-            markers[sensorId].popup.addTo(map);
+            // Закрываем все другие popups
+            document.querySelectorAll('.maplibregl-popup').forEach(p => {
+                p.style.display = 'none';
+            });
+            // Открываем popup после полёта камеры
+            setTimeout(() => {
+                markers[sensorId].marker.togglePopup();
+            }, 800);
         }
     }
 }
