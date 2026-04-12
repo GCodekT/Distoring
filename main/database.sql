@@ -114,6 +114,9 @@ CREATE TABLE event_logs (
 -- Представления
 -- ============================================
 
+ALTER TABLE sensor_data
+ADD temperature DECIMAL(5,2) AFTER pitch_angle;
+
 CREATE OR REPLACE VIEW latest_sensor_data AS
 SELECT 
     s.id as sensor_id,
@@ -127,6 +130,7 @@ SELECT
     sd.charge_percent,
     sd.roll_angle,
     sd.pitch_angle,
+    sd.temperature,
     sd.status,
     sd.timestamp as data_timestamp
 FROM sensors s
