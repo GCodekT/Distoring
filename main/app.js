@@ -204,26 +204,58 @@ function getDateWithTZ(dateStr, tzOffset = currentTZOffset) {
     const [y, mo, d] = datePart.split('-').map(Number);
     const [h, mi, s] = timePart.split(':').map(Number);
     
-    // Создаем дату в UTC (вычитаем смещение источника МСК UTC+3)
-    const utc = new Date(Date.UTC(y, mo - 1, d, h - 3, mi, s));
+    // Строка содержит время в МСК (UTC+3)
+    // Конвертируем в UTC вычитанием 3 часов
+    let utcDate = new Date(Date.UTC(y, mo - 1, d, h - 3, mi, s));
     
-    // Применяем целевое смещение
-    utc.setUTCHours(utc.getUTCHours() + tzOffset);
+    // Теперь преобразуем в целевой часовой пояс
+    // Добавляем разницу между целевым ЧП и UTC
+    let offsetMs = tzOffset * 60 * 60 * 1000;
+    let localDate = new Date(utcDate.getTime() + offsetMs);
     
-    return utc;
+    return localDate;
 }
 
-// Format datetime with timezone support
+// Format datetime - ПРАВИЛЬНАЯ ВЕРСИЯ
 function formatDateTime(dateStr) {
-    const date = getDateWithTZ(dateStr);
-    const now = new Date();
-    const diff = (now - date) / 1000;
+    if (!dateStr) return '—';
     
+    const [datePart, timePart] = dateStr.split(' ');
+    if (!datePart || !timePart) return '—';
+    
+    const [y, mo, d] = datePart.split('-').map(Number);
+    const [h, mi, s] = timePart.split(':').map(Number);
+    
+    // ВХ: 2026-04-11 09:02:53 (это МСК UTC+3)
+    // Создаём дату как если бы это была UTC, затем вычитаем 3 часа
+    const timestamp = Date.UTC(y, mo - 1, d, h, mi, s) - (3 * 60 * 60 * 1000);
+    const sensorDate = new Date(timestamp);  // Теперь это реальное UTC время
+    
+    // Текущее время в UTC
+    const now = new Date();
+    
+    // Разница в секундах (всегда в UTC)
+    const diff = (now.getTime() - sensorDate.getTime()) / 1000;
+    
+    // Для недавних событий показываем относительное время
     if (diff < 60) return 'только что';
     if (diff < 3600) return `${Math.floor(diff / 60)} мин назад`;
     if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
     
-    return date.toLocaleString('ru-RU');
+    // Для дат > 24 часов назад показываем точную дату в выбранном ЧП
+    // Берём UTC дату и добавляем смещение целевого ЧП
+    const msOffset = currentTZOffset * 60 * 60 * 1000;
+    const displayDate = new Date(sensorDate.getTime() + msOffset);
+    
+    // Форматируем как локальную дату
+    const year = displayDate.getUTCFullYear();
+    const month = String(displayDate.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(displayDate.getUTCDate()).padStart(2, '0');
+    const hour = String(displayDate.getUTCHours()).padStart(2, '0');
+    const minute = String(displayDate.getUTCMinutes()).padStart(2, '0');
+    const second = String(displayDate.getUTCSeconds()).padStart(2, '0');
+    
+    return `${day}.${month}.${year}, ${hour}:${minute}:${second}`;
 }
 
 // Load all sensors
