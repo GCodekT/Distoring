@@ -16,7 +16,7 @@ function getAuthToken() {
     
     if (tokenFromUrl) {
         localStorage.setItem('auth_token', tokenFromUrl);
-        // Удаляем токен из URL
+        // Удаляем токен из URL для чистоты
         window.history.replaceState({}, document.title, window.location.pathname);
         return tokenFromUrl;
     }
@@ -26,8 +26,14 @@ function getAuthToken() {
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
-    initTimezoneSelector(document.getElementById('tzSelect'));
-    checkAndRestoreSession();
+    const loadingScreen = document.getElementById('loadingScreen');
+    const appScreen = document.getElementById('appScreen');
+    
+    if (!loadingScreen || !appScreen) {
+        // На странице index.html
+        initTimezoneSelector(document.getElementById('tzSelect'));
+        checkAndRestoreSession();
+    }
 });
 
 // Проверка и восстановление сессии
@@ -35,6 +41,7 @@ async function checkAndRestoreSession() {
     currentToken = getAuthToken();
     
     if (!currentToken) {
+        // Перенаправляем на логин
         window.location.href = 'login.html';
         return;
     }
@@ -55,6 +62,16 @@ async function checkAndRestoreSession() {
         if (data.success) {
             currentUser = data.user;
             userOrganizations = data.organizations;
+            
+            // Скрываем экран загрузки
+            const loadingScreen = document.getElementById('loadingScreen');
+            const appScreen = document.getElementById('appScreen');
+            
+            if (loadingScreen && appScreen) {
+                loadingScreen.style.display = 'none';
+                appScreen.style.display = 'flex';
+            }
+            
             loadOrganizations();
         } else {
             localStorage.removeItem('auth_token');
@@ -65,6 +82,45 @@ async function checkAndRestoreSession() {
         localStorage.removeItem('auth_token');
         window.location.href = 'login.html';
     }
+}
+
+// Загрузить организации
+async function loadOrganizations() {
+    const orgSelect = document.getElementById('orgSelect');
+    if (!orgSelect) return;
+    
+    orgSelect.innerHTML = '<option value="">-- Выберите организацию --</option>';
+    
+    if (!userOrganizations || userOrganizations.length === 0) {
+        return;
+    }
+    
+    userOrganizations.forEach(org => {
+        const option = document.createElement('option');
+        option.value = org.id;
+        option.textContent = `${org.name} (${org.role_name})`;
+        orgSelect.appendChild(option);
+    });
+    
+    orgSelect.addEventListener('change', function() {
+        if (this.value) {
+            currentOrganization = userOrganizations.find(o => o.id == this.value);
+            if (typeof loadSensorsForOrganization === 'function') {
+                loadSensorsForOrganization(this.value);
+            }
+        } else {
+            currentOrganization = null;
+            const sensorsList = document.getElementById('sensorsList');
+            const manageSensorsList = document.getElementById('manageSensorsList');
+            
+            if (sensorsList) {
+                sensorsList.innerHTML = '<div class="loading"><p>Выберите организацию</p></div>';
+            }
+            if (manageSensorsList) {
+                manageSensorsList.innerHTML = '<p class="text-muted">Выберите организацию</p>';
+            }
+        }
+    });
 }
 
 // Выход
@@ -91,37 +147,7 @@ async function handleLogout() {
     window.location.href = 'login.html';
 }
 
-// ========== UI ФУНКЦИИ ==========
-
-function loadOrganizations() {
-    const orgSelect = document.getElementById('orgSelect');
-    if (!orgSelect) return;
-    
-    orgSelect.innerHTML = '<option value="">-- Выберите организацию --</option>';
-    
-    userOrganizations.forEach(org => {
-        const option = document.createElement('option');
-        option.value = org.id;
-        option.textContent = `${org.name} (${org.role_name})`;
-        orgSelect.appendChild(option);
-    });
-    
-    orgSelect.addEventListener('change', function() {
-        if (this.value) {
-            currentOrganization = userOrganizations.find(o => o.id == this.value);
-            loadSensorsForOrganization(this.value);
-        } else {
-            currentOrganization = null;
-            document.getElementById('sensorsList').innerHTML = 
-                '<div class="loading"><p>Выберите организацию</p></div>';
-            if (document.getElementById('manageSensorsList')) {
-                document.getElementById('manageSensorsList').innerHTML = 
-                    '<p class="text-muted">Выберите организацию</p>';
-            }
-        }
-    });
-}
-
+// Переключение видов
 function switchView(view) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('view-active'));
     document.getElementById(view + 'View').classList.add('view-active');
@@ -130,40 +156,60 @@ function switchView(view) {
     document.getElementById('btnManage').classList.toggle('btn-primary', view === 'manage');
     
     if (view === 'manage' && currentOrganization) {
-        loadSensorsForManagement();
-    } else if (view === 'monitor') {
-        if (typeof initMapOnce === 'function') {
-            setTimeout(() => initMapOnce(), 100);
+        if (typeof loadSensorsForManagement === 'function') {
+            loadSensorsForManagement();
         }
+    } else if (view === 'monitor') {
+        setTimeout(() => {
+            if (typeof initMapOnce === 'function') {
+                initMapOnce();
+            }
+        }, 100);
     }
 }
 
+// Открыть личный кабинет
 function openUserProfile() {
-    document.getElementById('profileModal').classList.add('active');
-    loadProfileData();
+    const profileModal = document.getElementById('profileModal');
+    if (profileModal) {
+        profileModal.classList.add('active');
+        loadProfileData();
+    }
 }
 
 function closeUserProfile() {
-    document.getElementById('profileModal').classList.remove('active');
+    const profileModal = document.getElementById('profileModal');
+    if (profileModal) {
+        profileModal.classList.remove('active');
+    }
 }
 
+// Загрузить данные профиля
 async function loadProfileData() {
-    document.getElementById('profileName').value = currentUser.name || '';
-    document.getElementById('profileEmail').value = currentUser.email || '';
-    document.getElementById('profilePhone').value = currentUser.phone || '';
-    document.getElementById('profileRole').value = currentUser.role;
+    const profileName = document.getElementById('profileName');
+    const profileEmail = document.getElementById('profileEmail');
+    const profilePhone = document.getElementById('profilePhone');
+    const profileRole = document.getElementById('profileRole');
+    const profileOrganizations = document.getElementById('profileOrganizations');
     
-    const orgsContainer = document.getElementById('profileOrganizations');
-    orgsContainer.innerHTML = userOrganizations.map(org => `
-        <div class="org-item">
-            <div>
-                <div class="org-name">${org.name}</div>
+    if (profileName) profileName.value = currentUser.name || '';
+    if (profileEmail) profileEmail.value = currentUser.email || '';
+    if (profilePhone) profilePhone.value = currentUser.phone || '';
+    if (profileRole) profileRole.value = currentUser.role;
+    
+    if (profileOrganizations) {
+        profileOrganizations.innerHTML = userOrganizations.map(org => `
+            <div class="org-item">
+                <div>
+                    <div class="org-name">${org.name}</div>
+                </div>
+                <div class="org-role">${org.role_name}</div>
             </div>
-            <div class="org-role">${org.role_name}</div>
-        </div>
-    `).join('');
+        `).join('');
+    }
 }
 
+// Сохранить профиль
 async function saveProfile() {
     const name = document.getElementById('profileName').value;
     const email = document.getElementById('profileEmail').value;
@@ -213,8 +259,9 @@ function showSuccessMessage(text) {
     }, 3000);
 }
 
+// События
 window.addEventListener('timezoneChanged', function() {
-    if (currentOrganization) {
+    if (currentOrganization && typeof loadSensorsForOrganization === 'function') {
         loadSensorsForOrganization(currentOrganization.id);
     }
 });

@@ -626,7 +626,30 @@ jsonResponse(['success' => false, 'error' => 'Unknown action: ' . $action], 400)
 
 // ========== АДМИН ЭНДПОИНТЫ ==========
 
-// Создать пользовател�� (только админ)
+// Получить всех пользователей (только админ)
+if ($action === 'admin_get_users') {
+    $user = getCurrentUser($db);
+    if (!$user || !$user['is_super_admin']) {
+        jsonResponse(['success' => false, 'error' => 'Access denied'], 403);
+    }
+    
+    try {
+        $stmt = $db->query("
+            SELECT u.id, u.email, u.phone, u.name, u.is_active,
+                   COALESCE(r.name, 'employee') as role_name
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            ORDER BY u.created_at DESC
+        ");
+        
+        jsonResponse(['success' => true, 'users' => $stmt->fetchAll()]);
+    } catch (Exception $e) {
+        logDebug('Get users error: ' . $e->getMessage());
+        jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
+    }
+}
+
+// Создать пользователя (только админ)
 if ($action === 'admin_create_user') {
     $user = getCurrentUser($db);
     if (!$user || !$user['is_super_admin']) {
@@ -645,14 +668,18 @@ if ($action === 'admin_create_user') {
         jsonResponse(['success' => false, 'error' => 'Email and password required'], 400);
     }
     
+    if (strlen($password) < 6) {
+        jsonResponse(['success' => false, 'error' => 'Password must be at least 6 characters'], 400);
+    }
+    
     try {
-        $stmt = $db->prepare("SELECT id FROM users WHERE email = ? OR phone = ?");
-        $stmt->execute([$email, $phone]);
+        $stmt = $db->prepare("SELECT id FROM users WHERE email = ?");
+        $stmt->execute([$email]);
         if ($stmt->fetch()) {
             jsonResponse(['success' => false, 'error' => 'User already exists'], 409);
         }
         
-        $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+        $passwordHash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 10]);
         
         $stmt = $db->prepare("
             INSERT INTO users (email, phone, password_hash, name, role_id, is_verified, is_active)
@@ -674,6 +701,7 @@ if ($action === 'admin_create_user') {
         jsonResponse(['success' => true, 'user_id' => $userId]);
         
     } catch (Exception $e) {
+        logDebug('Create user error: ' . $e->getMessage());
         jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
     }
 }
@@ -702,8 +730,8 @@ if ($action === 'admin_delete_user') {
     }
 }
 
-// Получить всех пользователей (только админ)
-if ($action === 'admin_get_users') {
+// Получить организации (только админ)
+if ($action === 'admin_get_organizations') {
     $user = getCurrentUser($db);
     if (!$user || !$user['is_super_admin']) {
         jsonResponse(['success' => false, 'error' => 'Access denied'], 403);
@@ -711,20 +739,19 @@ if ($action === 'admin_get_users') {
     
     try {
         $stmt = $db->query("
-            SELECT u.id, u.email, u.phone, u.name, u.is_active,
-                   r.name as role_name
-            FROM users u
-            LEFT JOIN roles r ON u.role_id = r.id
-            ORDER BY u.created_at DESC
+            SELECT id, name, created_at, is_active
+            FROM organizations
+            ORDER BY created_at DESC
         ");
         
-        jsonResponse(['success' => true, 'users' => $stmt->fetchAll()]);
+        jsonResponse(['success' => true, 'organizations' => $stmt->fetchAll()]);
     } catch (Exception $e) {
+        logDebug('Get organizations error: ' . $e->getMessage());
         jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
     }
 }
 
-// Создать организацию (только админ)
+// Создать организацию (т��лько админ)
 if ($action === 'admin_create_organization') {
     $user = getCurrentUser($db);
     if (!$user || !$user['is_super_admin']) {
@@ -746,8 +773,10 @@ if ($action === 'admin_create_organization') {
         $stmt->execute([$name, $user['id']]);
         $orgId = $db->lastInsertId();
         
+        logDebug('Organization created: ' . $name);
         jsonResponse(['success' => true, 'organization_id' => $orgId]);
     } catch (Exception $e) {
+        logDebug('Create organization error: ' . $e->getMessage());
         jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
     }
 }
@@ -776,26 +805,6 @@ if ($action === 'admin_delete_organization') {
     }
 }
 
-// Получить организации (только админ)
-if ($action === 'admin_get_organizations') {
-    $user = getCurrentUser($db);
-    if (!$user || !$user['is_super_admin']) {
-        jsonResponse(['success' => false, 'error' => 'Access denied'], 403);
-    }
-    
-    try {
-        $stmt = $db->query("
-            SELECT id, name, created_at, is_active
-            FROM organizations
-            ORDER BY created_at DESC
-        ");
-        
-        jsonResponse(['success' => true, 'organizations' => $stmt->fetchAll()]);
-    } catch (Exception $e) {
-        jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
-    }
-}
-
 // Получить датчики (только админ)
 if ($action === 'admin_get_sensors') {
     $user = getCurrentUser($db);
@@ -812,6 +821,11 @@ if ($action === 'admin_get_sensors') {
         
         jsonResponse(['success' => true, 'sensors' => $stmt->fetchAll()]);
     } catch (Exception $e) {
+        logDebug('Get sensors error: ' . $e->getMessage());
         jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
     }
 }
+
+// Если действие не найдено
+logDebug('Unknown action: ' . $action);
+jsonResponse(['success' => false, 'error' => 'Unknown action: ' . $action], 400);
