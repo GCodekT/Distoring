@@ -26,44 +26,142 @@ body {
     overflow: hidden;
 }
 
-.header {
+/* ========== ЭКРАНЫ ========== */
+
+.screen {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    height: 60px;
-    background: rgba(21, 25, 51, 0.95);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 24px;
+    bottom: 0;
+    display: none;
+    flex-direction: column;
 }
 
-.logo {
+.screen-active {
     display: flex;
+}
+
+/* ========== ЭКРАН ВХОДА ========== */
+
+#loginScreen {
     align-items: center;
-    gap: 12px;
-    font-size: 20px;
-    font-weight: 600;
+    justify-content: center;
+    background: linear-gradient(135deg, #0a0e27 0%, #1e2442 100%);
+}
+
+.login-container {
+    width: 100%;
+    max-width: 420px;
+    padding: 20px;
+}
+
+.login-box {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 48px 40px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.login-icon {
+    width: 64px;
+    height: 64px;
+    color: var(--accent);
+    margin-bottom: 16px;
+}
+
+.login-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
     color: var(--accent);
 }
 
-.logo svg {
-    width: 32px;
-    height: 32px;
+.login-header p {
+    font-size: 14px;
+    color: var(--text-secondary);
 }
 
-.header-actions {
-    display: flex;
-    gap: 12px;
-    align-items: center;
+.login-form {
+    margin-bottom: 32px;
 }
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.form-input {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+}
+
+.form-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.error-message {
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.success-message {
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid var(--success);
+    color: var(--success);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.login-footer {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-secondary);
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+
+.login-footer p {
+    margin: 8px 0;
+}
+
+/* ========== КНОПКИ ========== */
 
 .btn {
-    padding: 8px 16px;
+    padding: 10px 20px;
     border-radius: 8px;
     border: 1px solid var(--border);
     background: var(--bg-tertiary);
@@ -76,6 +174,7 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    white-space: nowrap;
 }
 
 .btn:hover {
@@ -87,16 +186,135 @@ body {
     background: var(--accent);
     border-color: var(--accent);
     color: #000;
+    font-weight: 600;
 }
 
 .btn-primary:hover {
     background: var(--accent-hover);
 }
 
+.btn-block {
+    width: 100%;
+}
+
+.btn-close {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+}
+
+.btn-close:hover {
+    color: var(--accent);
+}
+
+/* ========== HEADER ========== */
+
+#appScreen .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background: rgba(21, 25, 51, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 0 24px;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--accent);
+    min-width: 200px;
+}
+
+.logo svg {
+    width: 32px;
+    height: 32px;
+}
+
+.header-center {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+}
+
+.timezone-select,
+.org-select {
+    padding: 8px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 180px;
+}
+
+.timezone-select:hover,
+.org-select:hover {
+    border-color: var(--accent);
+}
+
+.timezone-select:focus,
+.org-select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.timezone-select option,
+.org-select option {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.header-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+/* ========== ОСНОВНОЙ КОНТЕНТ ========== */
+
+#appScreen {
+    display: flex;
+}
+
+.view {
+    position: fixed;
+    top: 70px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: none;
+}
+
+.view-active {
+    display: flex;
+}
+
+/* ========== ВИД МОНИТОРИНГА ========== */
+
+#monitorView {
+    flex-direction: row;
+}
+
 .sidebar {
     position: fixed;
     left: 0;
-    top: 60px;
+    top: 70px;
     bottom: 0;
     width: 360px;
     background: var(--bg-secondary);
@@ -129,30 +347,6 @@ body {
 }
 
 .search-box:focus {
-    border-color: var(--accent);
-}
-
-.filter-tabs {
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-}
-
-.filter-tab {
-    flex: 1;
-    padding: 8px;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 13px;
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.2s;
-}
-
-.filter-tab.active {
-    background: var(--accent);
-    color: #000;
     border-color: var(--accent);
 }
 
@@ -205,6 +399,7 @@ body {
     font-size: 12px;
     color: var(--text-secondary);
     margin-top: 8px;
+    flex-wrap: wrap;
 }
 
 .status-item {
@@ -230,7 +425,7 @@ body {
 
 #map {
     position: fixed;
-    top: 60px;
+    top: 70px;
     left: 360px;
     right: 0;
     bottom: 0;
@@ -244,7 +439,7 @@ body {
 .toggle-sidebar {
     position: fixed;
     left: 360px;
-    top: 80px;
+    top: 90px;
     z-index: 999;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
@@ -262,65 +457,132 @@ body {
     left: 0;
 }
 
-.leaflet-popup-content-wrapper {
+/* ========== ВИД УПРАВЛЕНИЯ ========== */
+
+#manageView {
+    flex-direction: row;
+}
+
+.manage-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+.manage-sidebar {
+    width: 300px;
     background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.manage-section {
+    margin-bottom: 32px;
+}
+
+.manage-section h3 {
+    font-size: 14px;
+    font-weight: 600;
     color: var(--text-primary);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.sensors-manage-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sensor-manage-item {
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 13px;
+}
+
+.sensor-manage-item:hover {
+    border-color: var(--accent);
+    background: rgba(0, 212, 255, 0.05);
+}
+
+.sensor-manage-item.active {
+    border-color: var(--accent);
+    background: rgba(0, 212, 255, 0.1);
+    color: var(--accent);
+}
+
+.manage-content {
+    flex: 1;
+    padding: 40px;
+    overflow-y: auto;
+}
+
+.manage-placeholder {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+}
+
+.manage-placeholder p {
+    font-size: 18px;
+}
+
+.sensor-editor,
+.add-sensor-form {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 0;
-    box-shadow: 0 8px 24px var(--shadow);
+    padding: 32px;
 }
 
-.leaflet-popup-content {
-    margin: 0;
-    min-width: 280px;
-}
-
-.popup-header {
-    padding: 16px;
+.editor-header,
+.form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
     border-bottom: 1px solid var(--border);
 }
 
-.popup-title {
+.editor-header h2,
+.form-header h2 {
+    font-size: 24px;
     font-weight: 600;
-    font-size: 16px;
-    margin-bottom: 4px;
 }
 
-.popup-body {
-    padding: 16px;
-}
-
-.data-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-}
-
-.data-item {
-    background: var(--bg-tertiary);
-    padding: 12px;
-    border-radius: 8px;
-}
-
-.data-label {
-    font-size: 11px;
-    color: var(--text-secondary);
-    margin-bottom: 4px;
-    text-transform: uppercase;
-}
-
-.data-value {
-    font-size: 18px;
-    font-weight: 600;
-    font-family: 'JetBrains Mono', monospace;
-}
-
-.popup-actions {
-    padding: 16px;
-    border-top: 1px solid var(--border);
+.editor-content {
     display: flex;
-    gap: 8px;
+    flex-direction: column;
+    gap: 20px;
 }
+
+.editor-actions,
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+
+.manage-actions {
+    position: fixed;
+    bottom: 0;
+    left: 300px;
+    right: 0;
+    padding: 20px 40px;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--border);
+}
+
+/* ========== МОДАЛЬНЫЕ ОКНА ========== */
 
 .modal {
     display: none;
@@ -347,70 +609,79 @@ body {
     width: 90%;
     max-height: 90vh;
     overflow-y: auto;
+    border: 1px solid var(--border);
+}
+
+.modal-lg {
+    max-width: 720px;
 }
 
 .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
     font-size: 24px;
     font-weight: 600;
-    margin-bottom: 24px;
 }
 
-.form-group {
-    margin-bottom: 20px;
+.modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
 }
 
-.form-label {
-    display: block;
-    margin-bottom: 8px;
-    font-size: 14px;
-    font-weight: 500;
+.profile-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
-.form-input {
-    width: 100%;
-    padding: 12px 16px;
+.profile-section h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.orgs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.org-item {
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
     border-radius: 8px;
-    color: var(--text-primary);
-    font-size: 14px;
-    outline: none;
-    transition: border-color 0.2s;
-}
-
-.form-input:focus {
-    border-color: var(--accent);
-}
-
-.form-actions {
+    padding: 12px;
     display: flex;
-    gap: 12px;
-    margin-top: 24px;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.btn-block {
-    flex: 1;
+.org-name {
+    font-weight: 600;
 }
 
-.error-message {
-    background: rgba(244, 67, 54, 0.1);
-    border: 1px solid var(--danger);
-    color: var(--danger);
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 16px;
+.org-role {
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.text-muted {
+    color: var(--text-secondary);
     font-size: 14px;
 }
 
-.success-message {
-    background: rgba(76, 175, 80, 0.1);
-    border: 1px solid var(--success);
-    color: var(--success);
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    font-size: 14px;
-}
+/* ========== УТИЛИТЫ ========== */
 
 .loading {
     text-align: center;
@@ -435,6 +706,7 @@ body {
 
 ::-webkit-scrollbar {
     width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -450,25 +722,7 @@ body {
     background: var(--accent);
 }
 
-@media (max-width: 768px) {
-    .sidebar {
-        width: 100%;
-    }
-    
-    #map {
-        left: 0;
-    }
-    
-    .toggle-sidebar {
-        display: none;
-    }
-}
-
-/* ========== MapLibre Popup Styles ========== */
-
-.maplibregl-popup {
-    z-index: 500;
-}
+/* ========== MapLibre ========== */
 
 .maplibregl-popup-content {
     background: var(--bg-secondary) !important;
@@ -477,11 +731,6 @@ body {
     padding: 0 !important;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
     border: 1px solid var(--border) !important;
-    max-width: 320px;
-}
-
-.maplibregl-popup-anchor-top .maplibregl-popup-content {
-    margin-top: 12px;
 }
 
 .maplibregl-popup-close-button {
@@ -500,43 +749,6 @@ body {
     color: #000 !important;
 }
 
-/* ========== Timezone Select Styling ========== */
-
-#tzSelect {
-    padding: 8px 12px;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text-primary);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-#tzSelect:hover {
-    border-color: var(--accent);
-}
-
-#tzSelect:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.1);
-}
-
-#tzSelect option {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    padding: 8px 12px;
-}
-
-#tzSelect option:hover {
-    background: var(--accent);
-    color: #000;
-}
-
-/* ========== MapLibre Controls ========== */
-
 .maplibregl-ctrl {
     background: var(--bg-secondary) !important;
     border: 1px solid var(--border) !important;
@@ -548,9 +760,6 @@ body {
     background: transparent !important;
     border: none !important;
     color: var(--text-primary) !important;
-    width: 36px !important;
-    height: 36px !important;
-    padding: 0 !important;
 }
 
 .maplibregl-ctrl button:hover {
@@ -558,33 +767,43 @@ body {
     color: var(--accent) !important;
 }
 
-.maplibregl-ctrl button:disabled {
-    background: var(--bg-primary) !important;
-    opacity: 0.5;
-    cursor: not-allowed !important;
-}
-
-/* ========== Attribution ========== */
-
-.maplibregl-ctrl-attrib {
-    background: rgba(21, 25, 51, 0.8) !important;
-    color: var(--text-secondary) !important;
-    font-size: 11px !important;
-}
-
-.maplibregl-ctrl-attrib a {
-    color: var(--accent) !important;
-}
-
-/* Масштаб в левом нижнем углу */
-.maplibregl-ctrl-scale {
-    background: transparent !important;
-    border: none !important;
-}
-
 .maplibregl-ctrl-scale-text {
     background: transparent !important;
     color: #ffffff !important;
     font-weight: 600;
     font-family: 'JetBrains Mono', monospace;
+}
+
+/* ========== RESPONSIVE ========== */
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+    }
+
+    #map {
+        left: 0;
+    }
+
+    .toggle-sidebar {
+        display: none;
+    }
+
+    .header-center {
+        display: none;
+    }
+
+    .manage-sidebar {
+        width: 100%;
+        max-width: 200px;
+        border-right: 1px solid var(--border);
+    }
+
+    .manage-content {
+        padding: 20px;
+    }
+
+    .manage-actions {
+        left: 200px;
+    }
 }

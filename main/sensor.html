@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Детали датчика - IoT Monitoring</title>
+    <title>Детали датчика - Distoring</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='28'>📡</text></svg>">
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     
@@ -58,17 +59,6 @@
             font-weight: 600;
         }
         
-        #tzSelect {
-            padding: 8px 12px;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: var(--text-primary);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
-            cursor: pointer;
-        }
-        
         .btn {
             padding: 10px 20px;
             background: var(--bg-tertiary);
@@ -82,6 +72,12 @@
         
         .btn:hover {
             border-color: var(--accent);
+        }
+        
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+            font-weight: 600;
         }
         
         .stats-grid {
@@ -166,14 +162,15 @@
             color: var(--text-secondary);
         }
         
-        .alert {
-            background: rgba(244, 67, 54, 0.1);
-            border: 1px solid var(--danger);
-            color: var(--danger);
-            padding: 16px;
-            border-radius: 8px;
-            margin-bottom: 24px;
-            font-weight: 500;
+        #tzSelect {
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -183,28 +180,25 @@
             <div class="header-left">
                 <div class="title" id="sensorTitle">Загрузка...</div>
                 <select id="tzSelect">
-                    <option value="+3">UTC+3 (Москва)</option>
-                    <option value="+4">UTC+4 (Самара)</option>
-                    <option value="+5">UTC+5 (Екатеринбург)</option>
-                    <option value="+6">UTC+6 (Омск)</option>
-                    <option value="+7">UTC+7 (Новосибирск)</option>
-                    <option value="+8">UTC+8 (Иркутск)</option>
-                    <option value="+9">UTC+9 (Якутск)</option>
-                    <option value="+10">UTC+10 (Владивосток)</option>
-                    <option value="+11">UTC+11 (Магадан)</option>
-                    <option value="+12">UTC+12 (Камчатка)</option>
+                    <option value="+3">UTC+3</option>
+                    <option value="+4">UTC+4</option>
+                    <option value="+5">UTC+5</option>
+                    <option value="+6">UTC+6</option>
+                    <option value="+7" selected>UTC+7</option>
+                    <option value="+8">UTC+8</option>
+                    <option value="+9">UTC+9</option>
+                    <option value="+10">UTC+10</option>
+                    <option value="+11">UTC+11</option>
+                    <option value="+12">UTC+12</option>
                 </select>
             </div>
-            <a href="index.html" class="btn">← Назад к карте</a>
+            <button class="btn" onclick="goBack()">← Назад</button>
         </div>
-        
-        <div id="alertContainer"></div>
         
         <div class="stats-grid" id="statsGrid">
             <div class="loading">Загрузка данных...</div>
         </div>
         
-        <!-- Заряд батареи -->
         <div class="chart-container">
             <div class="chart-header">
                 <div class="chart-title">Заряд батареи</div>
@@ -218,7 +212,6 @@
             <canvas id="batteryChart"></canvas>
         </div>
         
-        <!-- Крен -->
         <div class="chart-container">
             <div class="chart-header">
                 <div class="chart-title">Крен (Roll)</div>
@@ -232,7 +225,6 @@
             <canvas id="rollChart"></canvas>
         </div>
         
-        <!-- Тангаж -->
         <div class="chart-container">
             <div class="chart-header">
                 <div class="chart-title">Тангаж (Pitch)</div>
@@ -246,7 +238,6 @@
             <canvas id="pitchChart"></canvas>
         </div>
         
-        <!-- Температура -->
         <div class="chart-container">
             <div class="chart-header">
                 <div class="chart-title">Температура (°C)</div>
@@ -262,6 +253,6 @@
     </div>
     
     <script src="timezone.js"></script>
-    <script src="sensor.js"></script>
+    <script src="sensor-detail.js"></script>
 </body>
 </html>

@@ -142,3 +142,220 @@ WHERE sd.id = (
     LIMIT 1
 )
 OR sd.id IS NULL;
+
+-- ============================================
+-- Upgrade для многоуровневой системы
+-- ============================================
+
+-- ── ТАБЛИЦА ОРГАНИЗАЦИЙ ──
+CREATE TABLE IF NOT EXISTS organizations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT,
+    INDEX idx_created_by (created_by),
+    INDEX idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── ТАБЛИЦА РОЛЕЙ ──
+CREATE TABLE IF NOT EXISTS roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    description VARCHAR(255),
+    is_system BOOLEAN DEFAULT TRUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Вставляем стандартные роли
+INSERT IGNORE INTO roles (id, name, description, is_system) VALUES
+(1, 'admin', 'Администратор системы', TRUE),
+(2, 'lead_engineer', 'Главный инженер', TRUE),
+(3, 'engineer', 'Инженер', TRUE),
+(4, 'employee', 'Сотрудник', TRUE);
+
+-- ── ТАБЛИЦА ПОЛЬЗОВАТЕЛЕЙ В ОРГАНИЗАЦИИ ──
+CREATE TABLE IF NOT EXISTS user_organizations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    organization_id INT NOT NULL,
+    role_id INT NOT NULL DEFAULT 4,  -- Default: employee
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT,
+    UNIQUE KEY unique_user_org (user_id, organization_id),
+    INDEX idx_org (organization_id),
+    INDEX idx_role (role_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── ПРИВЯЗКА ДАТЧИКОВ К ОРГАНИЗАЦИЯМ ──
+CREATE TABLE IF NOT EXISTS organization_sensors (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    organization_id INT NOT NULL,
+    sensor_id INT NOT NULL,
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    FOREIGN KEY (sensor_id) REFERENCES sensors(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_org_sensor (organization_id, sensor_id),
+    INDEX idx_org (organization_id),
+    INDEX idx_sensor (sensor_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── РАСШИРЕНИЕ ТАБЛИЦЫ USERS ──
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role_id INT DEFAULT 4;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_super_admin BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD FOREIGN KEY IF NOT EXISTS (role_id) REFERENCES roles(id);
+ALTER TABLE users ADD INDEX IF NOT EXISTS idx_role (role_id);
+ALTER TABLE users ADD INDEX IF NOT EXISTS idx_super_admin (is_super_admin);
+
+-- ── РАСШИРЕНИЕ ТАБЛИЦЫ SENSORS ──
+ALTER TABLE sensors ADD COLUMN IF NOT EXISTS custom_latitude DECIMAL(10, 8) COMMENT 'Пользовательские координаты';
+ALTER TABLE sensors ADD COLUMN IF NOT EXISTS custom_longitude DECIMAL(11, 8) COMMENT 'Пользовательские координаты';
+
+-- Создаём представление для получения доступных датчиков пользователя
+CREATE OR REPLACE VIEW user_accessible_sensors AS
+SELECT DISTINCT
+    s.id, s.device_id, s.name, s.description,
+    COALESCE(s.custom_latitude, s.latitude) as latitude,
+    COALESCE(s.custom_longitude, s.longitude) as longitude,
+    s.is_precise_location, s.first_seen, s.last_seen, s.is_active,
+    o.id as organization_id, o.name as organization_name,
+    uo.role_id
+FROM sensors s
+JOIN organization_sensors os ON s.id = os.sensor_id
+JOIN organizations o ON os.organization_id = o.id
+JOIN user_organizations uo ON o.id = uo.organization_id
+WHERE s.is_active = 1 AND o.is_active = 1 AND uo.user_id = USER_ID
+ORDER BY s.last_seen DESC;
+
+-- ============================================
+-- Upgrade для многоуровневой системы
+-- ============================================
+
+-- ── ТАБЛИЦА ОРГАНИЗАЦИЙ ──
+CREATE TABLE IF NOT EXISTS organizations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT,
+    INDEX idx_created_by (created_by),
+    INDEX idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── ТАБЛИЦА РОЛЕЙ ──
+CREATE TABLE IF NOT EXISTS roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    description VARCHAR(255),
+    is_system BOOLEAN DEFAULT TRUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Вставляем стандартные роли
+INSERT IGNORE INTO roles (id, name, description, is_system) VALUES
+(1, 'admin', 'Администратор системы', TRUE),
+(2, 'lead_engineer', 'Главный инженер', TRUE),
+(3, 'engineer', 'Инженер', TRUE),
+(4, 'employee', 'Сотрудник', TRUE);
+
+-- ── ТАБЛИЦА ПОЛЬЗОВАТЕЛЕЙ В ОРГАНИЗАЦИИ ──
+CREATE TABLE IF NOT EXISTS user_organizations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    organization_id INT NOT NULL,
+    role_id INT NOT NULL DEFAULT 4,
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT,
+    UNIQUE KEY unique_user_org (user_id, organization_id),
+    INDEX idx_org (organization_id),
+    INDEX idx_role (role_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── ПРИВЯЗКА ДАТЧИКОВ К ОРГАНИЗАЦИЯМ ──
+CREATE TABLE IF NOT EXISTS organization_sensors (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    organization_id INT NOT NULL,
+    sensor_id INT NOT NULL,
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    FOREIGN KEY (sensor_id) REFERENCES sensors(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_org_sensor (organization_id, sensor_id),
+    INDEX idx_org (organization_id),
+    INDEX idx_sensor (sensor_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── РАСШИРЕНИЕ ТАБЛИЦЫ USERS ──
+SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_NAME='users' AND COLUMN_NAME='role_id' AND TABLE_SCHEMA=DATABASE());
+SET @sql_add_role := IF(@exist=0, 
+    'ALTER TABLE users ADD COLUMN role_id INT DEFAULT 4',
+    'SELECT 1');
+PREPARE stmt FROM @sql_add_role;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_NAME='users' AND COLUMN_NAME='is_super_admin' AND TABLE_SCHEMA=DATABASE());
+SET @sql_add_admin := IF(@exist=0, 
+    'ALTER TABLE users ADD COLUMN is_super_admin BOOLEAN DEFAULT FALSE',
+    'SELECT 1');
+PREPARE stmt FROM @sql_add_admin;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Добавляем внешний ключ для role_id (если его нет)
+SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+    WHERE TABLE_NAME='users' AND COLUMN_NAME='role_id' AND REFERENCED_TABLE_NAME='roles' AND TABLE_SCHEMA=DATABASE());
+SET @sql_fk_role := IF(@exist=0, 
+    'ALTER TABLE users ADD CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT',
+    'SELECT 1');
+PREPARE stmt FROM @sql_fk_role;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Добавляем индексы
+SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
+    WHERE TABLE_NAME='users' AND INDEX_NAME='idx_role' AND TABLE_SCHEMA=DATABASE());
+SET @sql_idx_role := IF(@exist=0, 
+    'ALTER TABLE users ADD INDEX idx_role (role_id)',
+    'SELECT 1');
+PREPARE stmt FROM @sql_idx_role;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
+    WHERE TABLE_NAME='users' AND INDEX_NAME='idx_super_admin' AND TABLE_SCHEMA=DATABASE());
+SET @sql_idx_admin := IF(@exist=0, 
+    'ALTER TABLE users ADD INDEX idx_super_admin (is_super_admin)',
+    'SELECT 1');
+PREPARE stmt FROM @sql_idx_admin;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- ── РАСШИРЕНИЕ ТАБЛИЦЫ SENSORS ──
+SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_NAME='sensors' AND COLUMN_NAME='custom_latitude' AND TABLE_SCHEMA=DATABASE());
+SET @sql_add_lat := IF(@exist=0, 
+    'ALTER TABLE sensors ADD COLUMN custom_latitude DECIMAL(10, 8) COMMENT "Пользовательские координаты"',
+    'SELECT 1');
+PREPARE stmt FROM @sql_add_lat;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_NAME='sensors' AND COLUMN_NAME='custom_longitude' AND TABLE_SCHEMA=DATABASE());
+SET @sql_add_lon := IF(@exist=0, 
+    'ALTER TABLE sensors ADD COLUMN custom_longitude DECIMAL(11, 8) COMMENT "Пользовательские координаты"',
+    'SELECT 1');
+PREPARE stmt FROM @sql_add_lon;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Проверяем результат
+SELECT 'Database upgrade completed successfully!' as status;

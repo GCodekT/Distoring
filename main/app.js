@@ -1,18 +1,14 @@
 /**
- * IoT Sensor Monitoring - Frontend Application
- * MapLibre GL JS версия
+ * Основная логика приложения Distoring
+ * Управление датчиками, организациями, мониторинг
  */
 
-// Configuration
-const API_URL = 'api.php';
 let map;
 let markers = {};
 let sensors = [];
-let currentUser = null;
-let currentFilter = 'all';
 let selectedSensor = null;
+let editingSensor = null;
 
-// Стилизация карты (темная тема)
 const MAP_STYLE = {
     version: 8,
     sources: {
@@ -32,45 +28,197 @@ const MAP_STYLE = {
     ]
 };
 
-// Initialize application
-document.addEventListener('DOMContentLoaded', function() {
-    initTimezoneSelector(document.getElementById('tzSelect'));
-    initMap();
-    checkAuth();
-    setupEventListeners();
+// Инициализация при переходе на вид мониторинга
+function initMapOnce() {
+    if (map) return;
     
-    // Auto-refresh every 30 seconds
-    setInterval(() => {
-        if (currentFilter === 'all') {
-            loadSensors();
-        } else if (currentFilter === 'my' && currentUser) {
-            loadMySensors();
-        }
-    }, 30000);
-});
-
-// Initialize MapLibre map
-function initMap() {
     map = new maplibregl.Map({
         container: 'map',
         style: MAP_STYLE,
-        center: [82.9429, 55.0144],  // Новосибирск [lon, lat]
+        center: [82.9429, 55.0144],
         zoom: 4,
         pitch: 0,
         bearing: 0
     });
 
-    // Добавляем контролы
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
     map.addControl(new maplibregl.ScaleControl(), 'bottom-left');
 
-    // Загружаем датчики после инициализации карты
     map.on('load', () => {
-        loadSensors();
+        if (currentOrganization) {
+            loadSensorsForOrganization(currentOrganization.id);
+        }
+    });
+    
+    setupEventListeners();
+}
+
+function setupEventListeners() {
+    // Переключение sidebar
+    document.getElementById('toggleSidebar').addEventListener('click', function() {
+        const sidebar = document.getElementById('sidebar');
+        const mapEl = document.getElementById('map');
+        const toggle = this;
+        
+        sidebar.classList.toggle('hidden');
+        mapEl.classList.toggle('fullwidth');
+        toggle.classList.toggle('collapsed');
+        
+        setTimeout(() => map.resize(), 300);
+    });
+    
+    // Поиск датчиков
+    document.getElementById('searchBox').addEventListener('input', function(e) {
+        const query = e.target.value.toLowerCase();
+        const filtered = sensors.filter(sensor =>
+            sensor.device_id.toLowerCase().includes(query) ||
+            (sensor.name && sensor.name.toLowerCase().includes(query))
+        );
+        displaySensors(filtered);
     });
 }
 
-// Create custom marker
+// ========== ЗАГРУЗКА ДАТЧИКОВ ==========
+
+async function loadSensorsForOrganization(orgId) {
+    try {
+        const response = await fetch(`${API_URL}?action=my_sensors&org_id=${orgId}`, {
+            headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            sensors = data.sensors;
+            displaySensors(sensors);
+            if (map) {
+                updateMap(sensors);
+            }
+        } else {
+            console.error('Load sensors error:', data.error);
+        }
+    } catch (error) {
+        console.error('Error loading sensors:', error);
+    }
+}
+
+async function loadSensorsForManagement() {
+    if (!currentOrganization) return;
+    
+    try {
+        const response = await fetch(`${API_URL}?action=my_sensors&org_id=${currentOrganization.id}`, {
+            headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            sensors = data.sensors;
+            displaySensorsForManagement(sensors);
+        }
+    } catch (error) {
+        console.error('Error loading sensors for management:', error);
+    }
+}
+
+// ========== ОТОБРАЖЕНИЕ ДАТЧИКОВ ==========
+
+function displaySensors(sensorList) {
+    const container = document.getElementById('sensorsList');
+    
+    if (!currentOrganization) {
+        container.innerHTML = '<div class="loading"><p>Выберите организацию</p></div>';
+        return;
+    }
+    
+    if (sensorList.length === 0) {
+        container.innerHTML = '<div class="loading"><p>Датчики не найдены</p></div>';
+        return;
+    }
+    
+    container.innerHTML = sensorList.map(sensor => {
+        const isOnline = sensor.last_seen && isRecent(sensor.last_seen);
+        const batteryColor = sensor.charge_percent > 50 ? '#4caf50' :
+                           sensor.charge_percent > 20 ? '#ff9800' : '#f44336';
+        
+        return `
+            <div class="sensor-card" onclick="selectSensorForMonitor(${sensor.id})">
+                <div class="sensor-name">
+                    <span>${sensor.name || 'Датчик'}</span>
+                    <span class="sensor-id">${sensor.device_id}</span>
+                </div>
+                <div class="sensor-status">
+                    <div class="status-item">
+                        <span class="status-badge ${isOnline ? 'online' : 'offline'}"></span>
+                        <span>${isOnline ? 'Онлайн' : 'Оффлайн'}</span>
+                    </div>
+                    ${sensor.charge_percent ? `
+                    <div class="status-item">
+                        🔋 <span style="color: ${batteryColor}">${sensor.charge_percent}%</span>
+                    </div>
+                    ` : ''}
+                    ${sensor.last_data_time ? `
+                    <div class="status-item">
+                        🕐 ${formatDateTime(sensor.last_data_time)}
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function displaySensorsForManagement(sensorList) {
+    const container = document.getElementById('manageSensorsList');
+    
+    if (!currentOrganization) {
+        container.innerHTML = '<p class="text-muted">Выберите организацию</p>';
+        return;
+    }
+    
+    if (sensorList.length === 0) {
+        container.innerHTML = '<p class="text-muted">Датчики не добавлены</p>';
+        return;
+    }
+    
+    container.innerHTML = sensorList.map(sensor => `
+        <div class="sensor-manage-item" onclick="editSensor(${sensor.id}, '${sensor.device_id}', '${sensor.name || ''}', ${sensor.latitude}, ${sensor.longitude}, '${sensor.last_data_time || ''}')">
+            <div style="font-weight: 600;">${sensor.name || 'Датчик'}</div>
+            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
+                ${sensor.device_id}
+            </div>
+        </div>
+    `).join('');
+}
+
+// Выбор датчика для мониторинга
+function selectSensorForMonitor(sensorId) {
+    selectedSensor = sensorId;
+    
+    document.querySelectorAll('.sensor-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    event.target.closest('.sensor-card')?.classList.add('selected');
+    
+    const sensor = sensors.find(s => s.id == sensorId);
+    if (sensor && map && sensor.latitude && sensor.longitude) {
+        initMapOnce();
+        map.flyTo({
+            center: [sensor.longitude, sensor.latitude],
+            zoom: 12,
+            duration: 1500
+        });
+        
+        if (markers[sensorId]) {
+            setTimeout(() => {
+                markers[sensorId].marker.togglePopup();
+            }, 800);
+        }
+    }
+}
+
+// ========== КАРТА ==========
+
 function createMarker(sensor) {
     const isOnline = sensor.last_seen && isRecent(sensor.last_seen);
     const batteryLevel = sensor.charge_percent || 0;
@@ -84,7 +232,6 @@ function createMarker(sensor) {
     
     const isPrecise = sensor.is_precise_location === 1 || sensor.is_precise_location === true;
     
-    // Создаем DOM элемент маркера
     const el = document.createElement('div');
     el.className = 'marker';
     el.style.backgroundColor = color;
@@ -98,19 +245,20 @@ function createMarker(sensor) {
     el.style.justifyContent = 'center';
     el.style.fontSize = '18px';
     el.style.cursor = 'pointer';
+    el.style.transition = 'transform 0.2s';
     el.innerHTML = isPrecise ? '📍' : '📡';
     
-    // Создаем popup с правильными опциями
-    const popup = new maplibregl.Popup({ 
+    el.addEventListener('mouseenter', () => el.style.transform = 'scale(1.2)');
+    el.addEventListener('mouseleave', () => el.style.transform = 'scale(1)');
+    
+    const popup = new maplibregl.Popup({
         offset: 25,
         closeButton: true,
         closeOnClick: false,
         className: 'sensor-popup'
-    })
-        .setHTML(createPopupContent(sensor));
+    }).setHTML(createPopupContent(sensor));
     
-    // Создаем маркер
-    const marker = new maplibregl.Marker({ 
+    const marker = new maplibregl.Marker({
         element: el,
         anchor: 'center'
     })
@@ -118,10 +266,8 @@ function createMarker(sensor) {
         .setPopup(popup)
         .addTo(map);
     
-    // Открываем popup при клике на маркер
     el.addEventListener('click', (e) => {
         e.stopPropagation();
-        // Закрываем все другие popups
         document.querySelectorAll('.maplibregl-popup').forEach(p => {
             if (p !== popup.getElement()) {
                 p.style.display = 'none';
@@ -133,10 +279,9 @@ function createMarker(sensor) {
     markers[sensor.id] = { marker, popup };
 }
 
-// Create popup content
 function createPopupContent(sensor) {
     const isOnline = sensor.last_seen && isRecent(sensor.last_seen);
-    const batteryColor = sensor.charge_percent > 50 ? '#4caf50' : 
+    const batteryColor = sensor.charge_percent > 50 ? '#4caf50' :
                         sensor.charge_percent > 20 ? '#ff9800' : '#f44336';
     
     return `
@@ -171,22 +316,229 @@ function createPopupContent(sensor) {
             ` : '<p style="color: var(--text-secondary);">Нет данных</p>'}
             ${sensor.last_data_time ? `
             <div style="margin-top: 12px; font-size: 12px; color: var(--text-secondary);">
-                Последнее обновление: ${formatDateTime(sensor.last_data_time)}
+                Обновлено: ${formatDateTime(sensor.last_data_time)}
             </div>
             ` : ''}
         </div>
         <div class="popup-actions">
-            <button class="btn btn-block" onclick="viewSensorDetails(${sensor.id})">Подробнее</button>
-            ${currentUser ? `
-            <button class="btn btn-primary btn-block" onclick="addSensorToAccount(${sensor.id})">
-                Добавить
+            <button class="btn" style="flex: 1;" onclick="openSensorDetails(${sensor.id})">
+                📊 Подробнее
             </button>
-            ` : ''}
         </div>
     `;
 }
 
-// Check if timestamp is recent
+function updateMap(sensorList) {
+    Object.values(markers).forEach(({ marker }) => marker.remove());
+    markers = {};
+    
+    sensorList.forEach(sensor => {
+        if (sensor.latitude && sensor.longitude) {
+            createMarker(sensor);
+        }
+    });
+}
+
+// ========== УПРАВЛЕНИЕ ДАТЧИКАМИ ==========
+
+function editSensor(sensorId, deviceId, name, lat, lon, lastSeen) {
+    editingSensor = {
+        id: sensorId,
+        device_id: deviceId,
+        name: name,
+        latitude: lat,
+        longitude: lon,
+        last_seen: lastSeen
+    };
+    
+    document.querySelectorAll('.sensor-manage-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    event.target.closest('.sensor-manage-item')?.classList.add('active');
+    
+    // Заполняем форму редактора
+    document.getElementById('editorDeviceId').value = deviceId;
+    document.getElementById('editorName').value = name;
+    document.getElementById('editorLat').value = lat;
+    document.getElementById('editorLon').value = lon;
+    document.getElementById('editorLastSeen').value = formatDateTime(lastSeen);
+    
+    document.getElementById('managePlaceholder').style.display = 'none';
+    document.getElementById('sensorEditor').style.display = 'block';
+    document.getElementById('addSensorForm').style.display = 'none';
+}
+
+function closeSensorEditor() {
+    document.getElementById('sensorEditor').style.display = 'none';
+    document.getElementById('managePlaceholder').style.display = 'block';
+    editingSensor = null;
+    
+    document.querySelectorAll('.sensor-manage-item').forEach(item => {
+        item.classList.remove('active');
+    });
+}
+
+async function saveSensorLocation() {
+    if (!editingSensor) return;
+    
+    const lat = parseFloat(document.getElementById('editorLat').value);
+    const lon = parseFloat(document.getElementById('editorLon').value);
+    
+    if (isNaN(lat) || isNaN(lon)) {
+        alert('Введите корректные координаты');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}?action=update_sensor_location`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentToken}`
+            },
+            body: JSON.stringify({
+                sensor_id: editingSensor.id,
+                latitude: lat,
+                longitude: lon
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Координаты сохранены');
+            loadSensorsForManagement();
+            if (map) {
+                loadSensorsForOrganization(currentOrganization.id);
+            }
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error saving location:', error);
+        alert('Ошибка при сохранении');
+    }
+}
+
+async function removeSensorFromOrg() {
+    if (!editingSensor) return;
+    
+    if (!confirm('Удалить датчик из организации?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}?action=remove_sensor_from_org`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentToken}`
+            },
+            body: JSON.stringify({
+                organization_id: currentOrganization.id,
+                sensor_id: editingSensor.id
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Датчик удалён');
+            closeSensorEditor();
+            loadSensorsForManagement();
+            if (map) {
+                loadSensorsForOrganization(currentOrganization.id);
+            }
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error removing sensor:', error);
+        alert('Ошибка при удалении');
+    }
+}
+
+function openAddSensorForm() {
+    document.getElementById('addSensorForm').style.display = 'block';
+    document.getElementById('sensorEditor').style.display = 'none';
+    document.getElementById('managePlaceholder').style.display = 'none';
+    document.getElementById('newSensorId').value = '';
+}
+
+function closeAddSensorForm() {
+    document.getElementById('addSensorForm').style.display = 'none';
+    document.getElementById('managePlaceholder').style.display = 'block';
+}
+
+async function addSensorToOrg() {
+    if (!currentOrganization) {
+        alert('Выберите организацию');
+        return;
+    }
+    
+    const deviceId = document.getElementById('newSensorId').value.trim();
+    
+    if (!deviceId) {
+        alert('Введите Device ID датчика');
+        return;
+    }
+    
+    // Находим датчик по device_id в глобальном реестре
+    // Для этого нужно сделать поиск в API
+    try {
+        const response = await fetch(`${API_URL}?action=search&q=${deviceId}`, {
+            headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success || data.results.length === 0) {
+            alert('Датчик не найден');
+            return;
+        }
+        
+        const sensorId = data.results[0].id;
+        
+        // Добавляем в организацию
+        const addResponse = await fetch(`${API_URL}?action=add_sensor_to_org`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentToken}`
+            },
+            body: JSON.stringify({
+                organization_id: currentOrganization.id,
+                sensor_id: sensorId
+            })
+        });
+        
+        const addData = await addResponse.json();
+        
+        if (addData.success) {
+            alert('Датчик добавлен');
+            closeAddSensorForm();
+            loadSensorsForManagement();
+            if (map) {
+                loadSensorsForOrganization(currentOrganization.id);
+            }
+        } else {
+            alert('Ошибка: ' + addData.error);
+        }
+    } catch (error) {
+        console.error('Error adding sensor:', error);
+        alert('Ошибка при добавлении датчика');
+    }
+}
+
+// ========== ОТКРЫТИЕ ДЕТАЛЕЙ ДАТЧИКА ==========
+
+function openSensorDetails(sensorId) {
+    // Переходим на страницу сенсора
+    window.location.href = `sensor.html?id=${sensorId}&token=${encodeURIComponent(currentToken)}`;
+}
+
+// ========== УТИЛИТЫ ==========
+
 function isRecent(timestamp) {
     const now = new Date();
     const lastSeen = new Date(timestamp);
@@ -194,7 +546,6 @@ function isRecent(timestamp) {
     return diff < 5;
 }
 
-// Получить дату с учётом часовых поясов для расчёта разницы
 function getDateWithTZ(dateStr, tzOffset = currentTZOffset) {
     if (!dateStr) return new Date();
     
@@ -204,19 +555,12 @@ function getDateWithTZ(dateStr, tzOffset = currentTZOffset) {
     const [y, mo, d] = datePart.split('-').map(Number);
     const [h, mi, s] = timePart.split(':').map(Number);
     
-    // Строка содержит время в МСК (UTC+3)
-    // Конвертируем в UTC вычитанием 3 часов
-    let utcDate = new Date(Date.UTC(y, mo - 1, d, h - 3, mi, s));
+    const timestamp = Date.UTC(y, mo - 1, d, h, mi, s) - (3 * 60 * 60 * 1000);
+    const sensorDate = new Date(timestamp);
     
-    // Теперь преобразуем в целевой часовой пояс
-    // Добавляем разницу между целевым ЧП и UTC
-    let offsetMs = tzOffset * 60 * 60 * 1000;
-    let localDate = new Date(utcDate.getTime() + offsetMs);
-    
-    return localDate;
+    return sensorDate;
 }
 
-// Format datetime - ПРАВИЛЬНАЯ ВЕРСИЯ
 function formatDateTime(dateStr) {
     if (!dateStr) return '—';
     
@@ -226,28 +570,19 @@ function formatDateTime(dateStr) {
     const [y, mo, d] = datePart.split('-').map(Number);
     const [h, mi, s] = timePart.split(':').map(Number);
     
-    // ВХ: 2026-04-11 09:02:53 (это МСК UTC+3)
-    // Создаём дату как если бы это была UTC, затем вычитаем 3 часа
     const timestamp = Date.UTC(y, mo - 1, d, h, mi, s) - (3 * 60 * 60 * 1000);
-    const sensorDate = new Date(timestamp);  // Теперь это реальное UTC время
+    const sensorDate = new Date(timestamp);
     
-    // Текущее время в UTC
     const now = new Date();
-    
-    // Разница в секундах (всегда в UTC)
     const diff = (now.getTime() - sensorDate.getTime()) / 1000;
     
-    // Для недавних событий показываем относительное время
     if (diff < 60) return 'только что';
     if (diff < 3600) return `${Math.floor(diff / 60)} мин назад`;
     if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
     
-    // Для дат > 24 часов назад показываем точную дату в выбранном ЧП
-    // Берём UTC дату и добавляем смещение целевого ЧП
     const msOffset = currentTZOffset * 60 * 60 * 1000;
     const displayDate = new Date(sensorDate.getTime() + msOffset);
     
-    // Форматируем как локальную дату
     const year = displayDate.getUTCFullYear();
     const month = String(displayDate.getUTCMonth() + 1).padStart(2, '0');
     const day = String(displayDate.getUTCDate()).padStart(2, '0');
@@ -258,490 +593,20 @@ function formatDateTime(dateStr) {
     return `${day}.${month}.${year}, ${hour}:${minute}:${second}`;
 }
 
-// Load all sensors
-async function loadSensors() {
-    try {
-        const response = await fetch(`${API_URL}?action=sensors`);
-        const data = await response.json();
-        
-        if (data.success) {
-            sensors = data.sensors;
-            displaySensors(sensors);
-            updateMap(sensors);
+// Инициализируем карту при переключении на вид мониторинга
+document.addEventListener('DOMContentLoaded', function() {
+    const originalSwitchView = window.switchView;
+    window.switchView = function(view) {
+        originalSwitchView(view);
+        if (view === 'monitor') {
+            setTimeout(() => initMapOnce(), 100);
         }
-    } catch (error) {
-        console.error('Error loading sensors:', error);
-    }
-}
+    };
+});
 
-// Load user's sensors
-async function loadMySensors() {
-    if (!currentUser) {
-        console.log('Not authenticated, cannot load my sensors');
-        showError('Требуется авторизация');
-        switchToAllSensors();
-        return;
-    }
-    
-    try {
-        const token = localStorage.getItem('auth_token');
-        
-        if (!token) {
-            console.log('No token found');
-            currentUser = null;
-            updateAuthUI();
-            switchToAllSensors();
-            return;
-        }
-        
-        const response = await fetch(`${API_URL}?action=my_sensors`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (response.status === 401) {
-            console.log('Token invalid, logging out');
-            localStorage.removeItem('auth_token');
-            currentUser = null;
-            updateAuthUI();
-            showError('Сессия истекла. Войдите снова.');
-            switchToAllSensors();
-            return;
-        }
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            sensors = data.sensors;
-            console.log('My sensors loaded:', sensors.length);
-            displaySensors(sensors);
-            updateMap(sensors);
-        } else {
-            console.error('Failed to load my sensors:', data.error);
-        }
-    } catch (error) {
-        console.error('Error loading my sensors:', error);
-    }
-}
-
-// Switch to all sensors tab
-function switchToAllSensors() {
-    currentFilter = 'all';
-    document.querySelectorAll('.filter-tab').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.filter === 'all');
-    });
-    loadSensors();
-}
-
-// Display sensors in sidebar
-function displaySensors(sensorList) {
-    const container = document.getElementById('sensorsList');
-    
-    if (sensorList.length === 0) {
-        container.innerHTML = '<div class="loading"><p>Датчики не найдены</p></div>';
-        return;
-    }
-    
-    container.innerHTML = sensorList.map(sensor => {
-        const isOnline = sensor.last_seen && isRecent(sensor.last_seen);
-        return `
-            <div class="sensor-card" onclick="selectSensor(${sensor.id})">
-                <div class="sensor-name">
-                    <span>${sensor.name || 'Датчик'}</span>
-                    <span class="sensor-id">${sensor.device_id}</span>
-                </div>
-                <div class="sensor-status">
-                    <div class="status-item">
-                        <span class="status-badge ${isOnline ? 'online' : 'offline'}"></span>
-                        <span>${isOnline ? 'Онла��н' : 'Оффлайн'}</span>
-                    </div>
-                    ${sensor.charge_percent ? `
-                    <div class="status-item">
-                        🔋 ${sensor.charge_percent}%
-                    </div>
-                    ` : ''}
-                    ${sensor.last_seen ? `
-                    <div class="status-item">
-                        🕐 ${formatDateTime(sensor.last_seen)}
-                    </div>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// Update map markers
-function updateMap(sensorList) {
-    // Очищаем старые маркеры
-    Object.values(markers).forEach(({ marker }) => marker.remove());
-    markers = {};
-    
-    // Добавляем новые маркеры
-    sensorList.forEach(sensor => {
-        if (sensor.latitude && sensor.longitude) {
-            createMarker(sensor);
-        }
-    });
-}
-
-// Select sensor
-function selectSensor(sensorId) {
-    selectedSensor = sensorId;
-    
-    document.querySelectorAll('.sensor-card').forEach(card => {
-        card.classList.remove('selected');
-    });
-    event.target.closest('.sensor-card').classList.add('selected');
-    
-    const sensor = sensors.find(s => s.id == sensorId);
-    if (sensor && sensor.latitude && sensor.longitude) {
-        map.flyTo({
-            center: [sensor.longitude, sensor.latitude],
-            zoom: 12,
-            duration: 1500
-        });
-        
-        if (markers[sensorId]) {
-            // Закрываем все другие popups
-            document.querySelectorAll('.maplibregl-popup').forEach(p => {
-                p.style.display = 'none';
-            });
-            // Открываем popup после полёта камеры
-            setTimeout(() => {
-                markers[sensorId].marker.togglePopup();
-            }, 800);
-        }
-    }
-}
-
-// View sensor details
-function viewSensorDetails(sensorId) {
-    window.location.href = `sensor.html?id=${sensorId}`;
-}
-
-// Add sensor to account
-async function addSensorToAccount(sensorId) {
-    if (!currentUser) {
-        openAuthModal();
-        return;
-    }
-    
-    try {
-        const token = localStorage.getItem('auth_token');
-        if (!token) {
-            showError('Требуется авторизация');
-            openAuthModal();
-            return;
-        }
-        
-        const response = await fetch(`${API_URL}?action=add_sensor`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ sensor_id: sensorId })
-        });
-        
-        if (response.status === 401) {
-            localStorage.removeItem('auth_token');
-            currentUser = null;
-            updateAuthUI();
-            showError('Сессия истекла. Войдите снова.');
-            openAuthModal();
-            return;
-        }
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showSuccess('Датчик успешно добавлен!');
-            if (currentFilter === 'my') {
-                loadMySensors();
-            }
-        } else {
-            showError(data.error);
-        }
-    } catch (error) {
-        console.error('Error adding sensor:', error);
-        showError('Ошибка при добавлении датчика');
-    }
-}
-
-// Setup event listeners
-function setupEventListeners() {
-    // Toggle sidebar
-    document.getElementById('toggleSidebar').addEventListener('click', function() {
-        const sidebar = document.getElementById('sidebar');
-        const mapEl = document.getElementById('map');
-        const toggle = this;
-        
-        sidebar.classList.toggle('hidden');
-        mapEl.classList.toggle('fullwidth');
-        toggle.classList.toggle('collapsed');
-        
-        setTimeout(() => map.resize(), 300);
-    });
-    
-    // Search
-    document.getElementById('searchBox').addEventListener('input', function(e) {
-        const query = e.target.value.toLowerCase();
-        const filtered = sensors.filter(sensor => 
-            sensor.device_id.toLowerCase().includes(query) ||
-            (sensor.name && sensor.name.toLowerCase().includes(query))
-        );
-        displaySensors(filtered);
-    });
-    
-    // Filter tabs
-    document.querySelectorAll('.filter-tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-            if (this.dataset.filter === 'my' && !currentUser) {
-                showError('Для просмотра "Мои датчики" необходимо войти в систему');
-                return;
-            }
-            
-            document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            
-            currentFilter = this.dataset.filter;
-            if (currentFilter === 'all') {
-                loadSensors();
-            } else {
-                loadMySensors();
-            }
-        });
-    });
-    
-    // Auth button
-    document.getElementById('btnAuth').addEventListener('click', function() {
-        if (currentUser) {
-            logout();
-        } else {
-            openAuthModal();
-        }
-    });
-    
-    // About
-    document.getElementById('btnAbout').addEventListener('click', function() {
-        window.location.href = 'about.html';
-    });
-    
-    // Support
-    document.getElementById('btnSupport').addEventListener('click', function() {
-        window.location.href = 'support.html';
-    });
-
-    // Перезагружаем при смене часового пояса
-    window.addEventListener('timezoneChanged', function() {
-        if (currentFilter === 'all') {
-            loadSensors();
-        } else if (currentFilter === 'my' && currentUser) {
-            loadMySensors();
-        }
-    });
-}
-
-// Check authentication
-async function checkAuth() {
-    const token = localStorage.getItem('auth_token');
-    
-    if (token) {
-        try {
-            const response = await fetch(`${API_URL}?action=profile`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            
-            if (response.status === 401) {
-                localStorage.removeItem('auth_token');
-                currentUser = null;
-                updateAuthUI();
-                loadSensors();
-                return;
-            }
-            
-            if (!response.ok) throw new Error('Ошибка сети');
-            const data = await response.json();
-            
-            if (data.success) {
-                currentUser = data.user;
-                updateAuthUI();
-            } else {
-                localStorage.removeItem('auth_token');
-            }
-        } catch (error) {
-            console.error('Auth check error:', error);
-            localStorage.removeItem('auth_token');
-        }
-    }
-    
-    loadSensors();
-}
-
-function updateAuthUI() {
-    const btn = document.getElementById('btnAuth');
-    
-    if (currentUser) {
-        btn.textContent = currentUser.name || currentUser.email;
-        btn.classList.remove('btn-primary');
-    } else {
-        btn.textContent = 'Вход / Регистрация';
-        btn.classList.add('btn-primary');
-    }
-}
-
-function openAuthModal() {
-    document.getElementById('authModal').classList.add('active');
-    showLoginForm();
-}
-
-function closeAuthModal() {
-    document.getElementById('authModal').classList.remove('active');
-    clearAuthForms();
-}
-
-function showLoginForm() {
-    document.getElementById('loginForm').style.display = 'block';
-    document.getElementById('registerForm').style.display = 'none';
-    document.getElementById('authModalTitle').textContent = 'Вход в систему';
-    clearAuthMessages();
-}
-
-function showRegisterForm() {
-    document.getElementById('loginForm').style.display = 'none';
-    document.getElementById('registerForm').style.display = 'block';
-    document.getElementById('authModalTitle').textContent = 'Регистрация';
-    clearAuthMessages();
-}
-
-function clearAuthForms() {
-    document.getElementById('loginInput').value = '';
-    document.getElementById('loginPassword').value = '';
-    document.getElementById('regEmail').value = '';
-    document.getElementById('regPhone').value = '';
-    document.getElementById('regName').value = '';
-    document.getElementById('regPassword').value = '';
-    clearAuthMessages();
-}
-
-function clearAuthMessages() {
-    document.getElementById('authError').innerHTML = '';
-    document.getElementById('authSuccess').innerHTML = '';
-}
-
-async function login() {
-    const login = document.getElementById('loginInput').value;
-    const password = document.getElementById('loginPassword').value;
-    
-    if (!login || !password) {
-        showAuthError('Заполните все поля');
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${API_URL}?action=login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ login, password })
-        });
-        
-        if (!response.ok) throw new Error('Ошибка сети');
-        const data = await response.json();
-        
-        if (data.success) {
-            localStorage.setItem('auth_token', data.token);
-            currentUser = data.user;
-            updateAuthUI();
-            closeAuthModal();
-            showSuccess('Вход выполнен успешно!');
-            
-            if (currentFilter === 'my') {
-                loadMySensors();
-            }
-        } else {
-            showAuthError(data.error);
-        }
-    } catch (error) {
-        console.error('Login error:', error);
-        showAuthError('Ошибка при входе');
-    }
-}
-
-async function register() {
-    const email = document.getElementById('regEmail').value;
-    const phone = document.getElementById('regPhone').value;
-    const name = document.getElementById('regName').value;
-    const password = document.getElementById('regPassword').value;
-    
-    if (!email || !password) {
-        showAuthError('Email и пароль обязательны');
-        return;
-    }
-    
-    if (password.length < 6) {
-        showAuthError('Пароль должен быть минимум 6 символов');
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${API_URL}?action=register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, phone, name, password })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            localStorage.setItem('auth_token', data.token);
-            currentUser = data.user;
-            updateAuthUI();
-            closeAuthModal();
-            showSuccess('Регистрация успешна!');
-        } else {
-            showAuthError(data.error);
-        }
-    } catch (error) {
-        console.error('Register error:', error);
-        showAuthError('Ошибка при регистрации');
-    }
-}
-
-function logout() {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-        fetch(`${API_URL}?action=logout`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
-        }).catch(err => console.error('Logout error:', err));
-    }
-    
-    localStorage.removeItem('auth_token');
-    currentUser = null;
-    updateAuthUI();
-    currentFilter = 'all';
-    document.querySelector('.filter-tab[data-filter="all"]').click();
-    showSuccess('Выход выполнен');
-}
-
-// UI helpers
-function showError(message) {
-    alert('⚠️ ' + message);
-}
-
-function showSuccess(message) {
-    alert('✓ ' + message);
-}
-
-function showAuthError(message) {
-    document.getElementById('authError').innerHTML = `<div class="error-message">${message}</div>`;
-}
-
-// Click outside modal to close
-document.getElementById('authModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeAuthModal();
+// Перезагружаем датчики при смене часового пояса
+window.addEventListener('timezoneChanged', function() {
+    if (currentOrganization) {
+        loadSensorsForOrganization(currentOrganization.id);
     }
 });

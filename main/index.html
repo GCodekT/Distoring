@@ -3,121 +3,262 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Distoring.ru - IoT Sensor Monitoring</title>
+    <title>Distoring.ru - IoT Monitoring</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='28'>📡</text></svg>">
     
+    <link href='https://unpkg.com/maplibre-gl@4.0.0/dist/maplibre-gl.css' rel='stylesheet' />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    
-    <!-- MapLibre GL JS CSS -->
-    <link href='https://unpkg.com/maplibre-gl@4.0.0/dist/maplibre-gl.css' rel='stylesheet' />
 </head>
 <body>
-    <div class="header">
-        <div class="logo">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-            </svg>
-            <span>Distoring</span>
-        </div>
-        <div class="header-actions">
-            <select id="tzSelect">
-                <option value="+3">UTC+3 (Москва)</option>
-                <option value="+4">UTC+4 (Самара)</option>
-                <option value="+5">UTC+5 (Екатеринбург)</option>
-                <option value="+6">UTC+6 (Омск)</option>
-                <option value="+7">UTC+7 (Новосибирск)</option>
-                <option value="+8">UTC+8 (Иркутск)</option>
-                <option value="+9">UTC+9 (Якутск)</option>
-                <option value="+10">UTC+10 (Владивосток)</option>
-                <option value="+11">UTC+11 (Магадан)</option>
-                <option value="+12">UTC+12 (Камчатка)</option>
-            </select>
-            <button class="btn" id="btnAbout">О проекте</button>
-            <button class="btn" id="btnSupport">Поддержка</button>
-            <button class="btn btn-primary" id="btnAuth">Вход / Регистрация</button>
-        </div>
-    </div>
-    
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <input type="text" class="search-box" id="searchBox" placeholder="Поиск датчика по ID...">
-            <div class="filter-tabs">
-                <div class="filter-tab active" data-filter="all">Все датчики</div>
-                <div class="filter-tab" data-filter="my">Мои датчики</div>
-            </div>
-        </div>
-        <div class="sensors-list" id="sensorsList">
-            <div class="loading">
-                <div class="spinner"></div>
-                <p>Загрузка датчиков...</p>
-            </div>
-        </div>
-    </div>
-    
-    <div class="toggle-sidebar" id="toggleSidebar">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-        </svg>
-    </div>
-    
-    <div id="map"></div>
-    
-    <div class="modal" id="authModal">
-        <div class="modal-content">
-            <div class="modal-header" id="authModalTitle">Вход в систему</div>
-            <div id="authError"></div>
-            <div id="authSuccess"></div>
-            <div id="loginForm">
-                <div class="form-group">
-                    <label class="form-label">Email или телефон</label>
-                    <input type="text" class="form-input" id="loginInput" placeholder="example@email.com или +7...">
+    <!-- ========== ЭКРАН ВХОДА (для неавторизованных) ========== -->
+    <div id="loginScreen" class="screen screen-active">
+        <div class="login-container">
+            <div class="login-box">
+                <div class="login-header">
+                    <svg viewBox="0 0 24 24" fill="currentColor" class="login-icon">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                    </svg>
+                    <h1>Distoring</h1>
+                    <p>IoT Sensor Monitoring System</p>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Пароль</label>
-                    <input type="password" class="form-input" id="loginPassword" placeholder="Введите пароль">
+
+                <div id="loginForm" class="login-form">
+                    <div class="form-group">
+                        <label class="form-label">Email или телефон</label>
+                        <input type="text" class="form-input" id="loginInput" placeholder="example@email.com или +7...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Пароль</label>
+                        <input type="password" class="form-input" id="loginPassword" placeholder="Введите пароль">
+                    </div>
+                    <div id="loginError" class="error-message" style="display:none;"></div>
+                    <button class="btn btn-primary btn-block" onclick="handleLogin()">Войти</button>
                 </div>
-                <div class="form-actions">
-                    <button class="btn btn-block" onclick="closeAuthModal()">Отмена</button>
-                    <button class="btn btn-primary btn-block" onclick="login()">Войти</button>
-                </div>
-                <div style="text-align: center; margin-top: 16px; color: var(--text-secondary); font-size: 14px;">
-                    Нет аккаунта? <a href="#" onclick="showRegisterForm(); return false;" style="color: var(--accent);">Зарегистрироваться</a>
-                </div>
-            </div>
-            <div id="registerForm" style="display: none;">
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-input" id="regEmail" placeholder="example@email.com">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Телефон (опционально)</label>
-                    <input type="tel" class="form-input" id="regPhone" placeholder="+7...">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Имя</label>
-                    <input type="text" class="form-input" id="regName" placeholder="Ваше имя">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Пароль</label>
-                    <input type="password" class="form-input" id="regPassword" placeholder="Минимум 6 символов">
-                </div>
-                <div class="form-actions">
-                    <button class="btn btn-block" onclick="closeAuthModal()">Отмена</button>
-                    <button class="btn btn-primary btn-block" onclick="register()">Зарегистрироваться</button>
-                </div>
-                <div style="text-align: center; margin-top: 16px; color: var(--text-secondary); font-size: 14px;">
-                    Уже есть аккаунт? <a href="#" onclick="showLoginForm(); return false;" style="color: var(--accent);">Войти</a>
+
+                <div class="login-footer">
+                    <p>Систему администрирует только администратор</p>
+                    <p style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
+                        Для регистрации нового аккаунта обратитесь к администратору системы
+                    </p>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- MapLibre GL JS (ВАЖНО: загружаем ДО app.js) -->
+
+    <!-- ========== ОСНОВНОЕ ПРИЛОЖЕНИЕ (для авторизованных) ========== -->
+    <div id="appScreen" class="screen">
+        <!-- Топ-бар с навигацией -->
+        <div class="header">
+            <div class="logo">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                </svg>
+                <span>Distoring</span>
+            </div>
+
+            <div class="header-center">
+                <select id="tzSelect" class="timezone-select">
+                    <option value="+3">UTC+3 (Москва)</option>
+                    <option value="+4">UTC+4 (Самара)</option>
+                    <option value="+5">UTC+5 (Екатеринбург)</option>
+                    <option value="+6">UTC+6 (Омск)</option>
+                    <option value="+7">UTC+7 (Новосибирск)</option>
+                    <option value="+8">UTC+8 (Иркутск)</option>
+                    <option value="+9">UTC+9 (Якутск)</option>
+                    <option value="+10">UTC+10 (Владивосток)</option>
+                    <option value="+11">UTC+11 (Магадан)</option>
+                    <option value="+12">UTC+12 (Камчатка)</option>
+                </select>
+
+                <select id="orgSelect" class="org-select">
+                    <option value="">Выберите организацию...</option>
+                </select>
+            </div>
+
+            <div class="header-actions">
+                <button class="btn" id="btnMonitor" onclick="switchView('monitor')">
+                    📊 Мониторинг
+                </button>
+                <button class="btn" id="btnManage" onclick="switchView('manage')" style="display:none;">
+                    ⚙️ Управление
+                </button>
+                <button class="btn" onclick="openUserProfile()">
+                    👤 Профиль
+                </button>
+                <button class="btn" onclick="handleLogout()">
+                    🚪 Выход
+                </button>
+            </div>
+        </div>
+
+        <!-- ========== ВИД: МОНИТОРИНГ ========== -->
+        <div id="monitorView" class="view view-active">
+            <div class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <input type="text" class="search-box" id="searchBox" placeholder="Поиск по ID датчика...">
+                </div>
+                <div class="sensors-list" id="sensorsList">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Загрузка датчиков...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="toggle-sidebar" id="toggleSidebar">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                </svg>
+            </div>
+
+            <div id="map"></div>
+        </div>
+
+        <!-- ========== ВИД: УПРАВЛЕНИЕ (только для инженеров) ========== -->
+        <div id="manageView" class="view">
+            <div class="manage-container">
+                <div class="manage-sidebar">
+                    <div class="manage-section">
+                        <h3>Датчики организации</h3>
+                        <div id="manageSensorsList" class="sensors-manage-list">
+                            <p class="text-muted">Выберите организацию</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="manage-content">
+                    <div id="managePlaceholder" class="manage-placeholder">
+                        <p>Выберите датчик для редактирования</p>
+                    </div>
+
+                    <div id="sensorEditor" class="sensor-editor" style="display:none;">
+                        <div class="editor-header">
+                            <h2 id="editorTitle">Редактирование датчика</h2>
+                            <button class="btn" onclick="closeSensorEditor()">✕ Закрыть</button>
+                        </div>
+
+                        <div class="editor-content">
+                            <div class="form-group">
+                                <label class="form-label">Device ID</label>
+                                <input type="text" class="form-input" id="editorDeviceId" disabled>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Название датчика</label>
+                                <input type="text" class="form-input" id="editorName">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Широта</label>
+                                <input type="number" class="form-input" id="editorLat" step="0.000001" placeholder="55.75">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Долгота</label>
+                                <input type="number" class="form-input" id="editorLon" step="0.000001" placeholder="37.61">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Последнее обновление</label>
+                                <input type="text" class="form-input" id="editorLastSeen" disabled>
+                            </div>
+
+                            <div class="editor-actions">
+                                <button class="btn btn-primary" onclick="saveSensorLocation()">
+                                    💾 Сохранить координаты
+                                </button>
+                                <button class="btn" style="background: var(--danger); color: white;" onclick="removeSensorFromOrg()">
+                                    🗑️ Удалить из организации
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="addSensorForm" class="add-sensor-form" style="display:none;">
+                        <div class="form-header">
+                            <h2>Добавить датчик</h2>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Device ID датчика</label>
+                            <input type="text" class="form-input" id="newSensorId" placeholder="Введите Device ID">
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn btn-primary" onclick="addSensorToOrg()">
+                                ➕ Добавить датчик
+                            </button>
+                            <button class="btn" onclick="closeAddSensorForm()">
+                                Отмена
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="manage-actions">
+                <button class="btn btn-primary" onclick="openAddSensorForm()">
+                    ➕ Добавить датчик в организацию
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== МОДАЛЬНОЕ ОКНО: ПРОФИЛЬ ========== -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2>Личный кабинет</h2>
+                <button class="btn-close" onclick="closeUserProfile()">✕</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="profile-section">
+                    <h3>Основная информация</h3>
+                    <div class="form-group">
+                        <label class="form-label">Имя</label>
+                        <input type="text" class="form-input" id="profileName">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-input" id="profileEmail" placeholder="example@email.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Телефон</label>
+                        <input type="tel" class="form-input" id="profilePhone" placeholder="+7...">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Роль</label>
+                        <input type="text" class="form-input" id="profileRole" disabled>
+                    </div>
+
+                    <div id="profileError" class="error-message" style="display:none;"></div>
+                    <div id="profileSuccess" class="success-message" style="display:none;"></div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-primary" onclick="saveProfile()">
+                            💾 Сохранить
+                        </button>
+                    </div>
+                </div>
+
+                <div class="profile-section">
+                    <h3>Организации</h3>
+                    <div id="profileOrganizations" class="orgs-list">
+                        <p class="text-muted">Загрузка...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src='https://unpkg.com/maplibre-gl@4.0.0/dist/maplibre-gl.js'></script>
-    
-    <!-- Наши скрипты -->
     <script src="timezone.js"></script>
+    <script src="auth.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
