@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ панель - Distoring</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='28'>📡</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #151933;
+            --bg-tertiary: #1e2442;
+            --accent: #00d4ff;
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa0a6;
+            --border: #2d3451;
+            --success: #4caf50;
+            --danger: #f44336;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header h1 {
+            font-size: 32px;
+            color: var(--accent);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            border-color: var(--accent);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .btn-danger {
+            background: rgba(244, 67, 54, 0.1);
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: rgba(244, 67, 54, 0.2);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 32px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-weight: 600;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .form-input,
+        .form-select {
+            width: 100%;
+            max-width: 500px;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: inherit;
+        }
+
+        .form-input:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .table th {
+            background: var(--bg-tertiary);
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status.active {
+            background: rgba(76, 175, 80, 0.2);
+            color: var(--success);
+        }
+
+        .status.inactive {
+            background: rgba(244, 67, 54, 0.2);
+            color: var(--danger);
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.success {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .message.error {
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs {
+                flex-wrap: wrap;
+            }
+
+            .table {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚙️ Админ панель</h1>
+            <div class="header-actions">
+                <button class="btn" onclick="openProfile()">👤 Профиль</button>
+                <button class="btn btn-danger" onclick="handleLogout()">🚪 Выход</button>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('users')">👥 Пользователи</button>
+            <button class="tab-btn" onclick="switchTab('organizations')">🏢 Организации</button>
+            <button class="tab-btn" onclick="switchTab('sensors')">📡 Датчики</button>
+        </div>
+
+        <!-- ========== ВКЛАДКА: ПОЛЬЗОВАТЕЛИ ========== -->
+        <div id="users-tab" class="tab-content active">
+            <div class="section">
+                <h2>Создать нового пользователя</h2>
+                <div id="userMessage" class="message"></div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-input" id="newUserEmail" placeholder="user@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Телефон</label>
+                        <input type="tel" class="form-input" id="newUserPhone" placeholder="+7...">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Имя</label>
+                        <input type="text" class="form-input" id="newUserName" placeholder="Иван Иванов">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Пароль</label>
+                        <input type="password" class="form-input" id="newUserPassword" placeholder="Минимум 6 символов">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Роль</label>
+                        <select class="form-select" id="newUserRole">
+                            <option value="4">Сотрудник</option>
+                            <option value="3">Инженер</option>
+                            <option value="2">Главный инженер</option>
+                            <option value="1">Администратор</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Организация</label>
+                        <select class="form-select" id="newUserOrg">
+                            <option value="">-- Выберите организацию --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="createUser()">➕ Создать пользователя</button>
+            </div>
+
+            <div class="section">
+                <h2>Список пользователей</h2>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Имя</th>
+                            <th>Роль</th>
+                            <th>Телефон</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersList">
+                        <tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ========== ВКЛАДКА: ОРГАНИЗАЦИИ ========== -->
+        <div id="organizations-tab" class="tab-content">
+            <div class="section">
+                <h2>Создать организацию</h2>
+                <div id="orgMessage" class="message"></div>
+
+                <div class="form-group">
+                    <label class="form-label">Название организации</label>
+                    <input type="text" class="form-input" id="newOrgName" placeholder="ООО Компания" style="max-width: 500px;">
+                </div>
+
+                <button class="btn btn-primary" onclick="createOrganization()">➕ Создать организацию</button>
+            </div>
+
+            <div class="section">
+                <h2>Список организаций</h2>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Создано</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orgsList">
+                        <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ========== ВКЛАДКА: ДАТЧИКИ ========== -->
+        <div id="sensors-tab" class="tab-content">
+            <div class="section">
+                <h2>Список датчиков</h2>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Device ID</th>
+                            <th>Название</th>
+                            <th>Последнее обновление</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sensorsList">
+                        <tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'api.php';
+        const token = new URLSearchParams(window.location.search).get('token') || localStorage.getItem('auth_token');
+
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUsers();
+            loadOrganizations();
+            loadSensors();
+        });
+
+        // ========== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ==========
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // ========== ПОЛЬЗОВАТЕЛИ ==========
+        async function createUser() {
+            const email = document.getElementById('newUserEmail').value.trim();
+            const phone = document.getElementById('newUserPhone').value.trim();
+            const name = document.getElementById('newUserName').value.trim();
+            const password = document.getElementById('newUserPassword').value.trim();
+            const roleId = document.getElementById('newUserRole').value;
+            const orgId = document.getElementById('newUserOrg').value;
+
+            if (!email || !password) {
+                showMessage('userMessage', 'Email и пароль обязательны', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                showMessage('userMessage', 'Пароль должен быть минимум 6 символов', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}?action=admin_create_user`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        email,
+                        phone: phone || null,
+                        name,
+                        password,
+                        role_id: roleId,
+                        organization_id: orgId || null
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('userMessage', 'Пользователь создан успешно', 'success');
+                    document.getElementById('newUserEmail').value = '';
+                    document.getElementById('newUserPhone').value = '';
+                    document.getElementById('newUserName').value = '';
+                    document.getElementById('newUserPassword').value = '';
+                    loadUsers();
+                } else {
+                    showMessage('userMessage', data.error || 'Ошибка при создании', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('userMessage', 'Ошибка сети', 'error');
+            }
+        }
+
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${API_URL}?action=admin_get_users`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const tbody = document.getElementById('usersList');
+                    tbody.innerHTML = data.users.map(user => `
+                        <tr>
+                            <td>${user.email}</td>
+                            <td>${user.name || '—'}</td>
+                            <td>${user.role_name}</td>
+                            <td>${user.phone || '—'}</td>
+                            <td>
+                                <span class="status ${user.is_active ? 'active' : 'inactive'}">
+                                    ${user.is_active ? 'Активен' : 'Неактивен'}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-small btn-danger" onclick="deleteUser(${user.id})">
+                                    Удалить
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+
+                    // Загружаем организации для select
+                    loadOrganizationsForSelect();
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('Вы уверены? Пользователь будет удалён.')) return;
+
+            try {
+                const response = await fetch(`${API_URL}?action=admin_delete_user`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ user_id: userId })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('userMessage', 'Пользователь удалён', 'success');
+                    loadUsers();
+                } else {
+                    showMessage('userMessage', data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function loadOrganizationsForSelect() {
+            try {
+                const response = await fetch(`${API_URL}?action=admin_get_organizations`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const select = document.getElementById('newUserOrg');
+                    select.innerHTML = '<option value="">-- Выберите организацию --</option>' +
+                        data.organizations.map(org => 
+                            `<option value="${org.id}">${org.name}</option>`
+                        ).join('');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // ========== ОРГАНИЗАЦИИ ==========
+        async function createOrganization() {
+            const name = document.getElementById('newOrgName').value.trim();
+
+            if (!name) {
+                showMessage('orgMessage', 'Введите название организации', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}?action=admin_create_organization`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ name })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('orgMessage', 'Организация создана', 'success');
+                    document.getElementById('newOrgName').value = '';
+                    loadOrganizations();
+                } else {
+                    showMessage('orgMessage', data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('orgMessage', 'Ошибка сети', 'error');
+            }
+        }
+
+        async function loadOrganizations() {
+            try {
+                const response = await fetch(`${API_URL}?action=admin_get_organizations`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const tbody = document.getElementById('orgsList');
+                    tbody.innerHTML = data.organizations.map(org => `
+                        <tr>
+                            <td>${org.name}</td>
+                            <td>${new Date(org.created_at).toLocaleString('ru-RU')}</td>
+                            <td>
+                                <span class="status ${org.is_active ? 'active' : 'inactive'}">
+                                    ${org.is_active ? 'Активна' : 'Неактивна'}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-small btn-danger" onclick="deleteOrganization(${org.id})">
+                                    Удалить
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function deleteOrganization(orgId) {
+            if (!confirm('Удалить организацию и все её данные?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}?action=admin_delete_organization`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ organization_id: orgId })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('orgMessage', 'Организация удалена', 'success');
+                    loadOrganizations();
+                } else {
+                    showMessage('orgMessage', data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // ========== ДАТЧИКИ ==========
+        async function loadSensors() {
+            try {
+                const response = await fetch(`${API_URL}?action=admin_get_sensors`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const tbody = document.getElementById('sensorsList');
+                    tbody.innerHTML = data.sensors.map(sensor => `
+                        <tr>
+                            <td><code>${sensor.device_id}</code></td>
+                            <td>${sensor.name || '—'}</td>
+                            <td>${sensor.last_seen ? new Date(sensor.last_seen).toLocaleString('ru-RU') : '—'}</td>
+                            <td>
+                                <span class="status ${sensor.is_active ? 'active' : 'inactive'}">
+                                    ${sensor.is_active ? 'Активен' : 'Неактивен'}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-small" onclick="editSensor(${sensor.id})">
+                                    Редактировать
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // ========== УТИЛИТЫ ==========
+        function showMessage(elementId, text, type) {
+            const el = document.getElementById(elementId);
+            el.textContent = text;
+            el.className = `message ${type} show`;
+
+            setTimeout(() => {
+                el.classList.remove('show');
+            }, 4000);
+        }
+
+        function openProfile() {
+            alert('Профиль администратора');
+        }
+
+        function handleLogout() {
+            if (confirm('Выйти из системы?')) {
+                localStorage.removeItem('auth_token');
+                window.location.href = 'login.html';
+            }
+        }
+
+        function editSensor(sensorId) {
+            alert('Редактирование датчика ' + sensorId);
+        }
+    </script>
+</body>
+</html>

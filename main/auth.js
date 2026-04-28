@@ -9,6 +9,21 @@ let currentToken = null;
 let currentOrganization = null;
 let userOrganizations = [];
 
+// Получаем токен из URL или localStorage
+function getAuthToken() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get('token');
+    
+    if (tokenFromUrl) {
+        localStorage.setItem('auth_token', tokenFromUrl);
+        // Удаляем токен из URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return tokenFromUrl;
+    }
+    
+    return localStorage.getItem('auth_token');
+}
+
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
     initTimezoneSelector(document.getElementById('tzSelect'));
@@ -17,21 +32,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Проверка и восстановление сессии
 async function checkAndRestoreSession() {
-    const savedToken = localStorage.getItem('auth_token');
+    currentToken = getAuthToken();
     
-    if (!savedToken) {
-        showLoginScreen();
+    if (!currentToken) {
+        window.location.href = 'login.html';
         return;
     }
     
     try {
         const response = await fetch(`${API_URL}?action=profile`, {
-            headers: { 'Authorization': `Bearer ${savedToken}` }
+            headers: { 'Authorization': `Bearer ${currentToken}` }
         });
         
         if (response.status === 401) {
             localStorage.removeItem('auth_token');
-            showLoginScreen();
+            window.location.href = 'login.html';
             return;
         }
         
@@ -39,61 +54,16 @@ async function checkAndRestoreSession() {
         
         if (data.success) {
             currentUser = data.user;
-            currentToken = savedToken;
             userOrganizations = data.organizations;
-            showAppScreen();
             loadOrganizations();
         } else {
             localStorage.removeItem('auth_token');
-            showLoginScreen();
+            window.location.href = 'login.html';
         }
     } catch (error) {
         console.error('Session check error:', error);
         localStorage.removeItem('auth_token');
-        showLoginScreen();
-    }
-}
-
-// Вход в систему
-async function handleLogin() {
-    const login = document.getElementById('loginInput').value.trim();
-    const password = document.getElementById('loginPassword').value.trim();
-    const errorEl = document.getElementById('loginError');
-    
-    if (!login || !password) {
-        showLoginError('Заполните все поля');
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${API_URL}?action=login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ login, password })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            currentUser = data.user;
-            currentToken = data.token;
-            userOrganizations = data.organizations || [];
-            
-            localStorage.setItem('auth_token', data.token);
-            
-            // Очищаем форму
-            document.getElementById('loginInput').value = '';
-            document.getElementById('loginPassword').value = '';
-            errorEl.style.display = 'none';
-            
-            showAppScreen();
-            loadOrganizations();
-        } else {
-            showLoginError(data.error || 'Ошибка входа');
-        }
-    } catch (error) {
-        console.error('Login error:', error);
-        showLoginError('Ошибка сети');
+        window.location.href = 'login.html';
     }
 }
 
@@ -118,38 +88,15 @@ async function handleLogout() {
     currentOrganization = null;
     userOrganizations = [];
     
-    showLoginScreen();
+    window.location.href = 'login.html';
 }
 
 // ========== UI ФУНКЦИИ ==========
 
-function showLoginScreen() {
-    document.getElementById('loginScreen').classList.add('screen-active');
-    document.getElementById('appScreen').classList.remove('screen-active');
-}
-
-function showAppScreen() {
-    document.getElementById('loginScreen').classList.remove('screen-active');
-    document.getElementById('appScreen').classList.add('screen-active');
-    
-    // Показываем кнопку "Управление" только для инженеров и выше
-    const manageBtn = document.getElementById('btnManage');
-    if (currentUser.role === 'admin' || currentUser.role === 'lead_engineer') {
-        manageBtn.style.display = 'block';
-    } else {
-        manageBtn.style.display = 'none';
-    }
-}
-
-function showLoginError(message) {
-    const errorEl = document.getElementById('loginError');
-    errorEl.textContent = message;
-    errorEl.style.display = 'block';
-}
-
-// Загрузить организации
-async function loadOrganizations() {
+function loadOrganizations() {
     const orgSelect = document.getElementById('orgSelect');
+    if (!orgSelect) return;
+    
     orgSelect.innerHTML = '<option value="">-- Выберите организацию --</option>';
     
     userOrganizations.forEach(org => {
@@ -167,13 +114,14 @@ async function loadOrganizations() {
             currentOrganization = null;
             document.getElementById('sensorsList').innerHTML = 
                 '<div class="loading"><p>Выберите организацию</p></div>';
-            document.getElementById('manageSensorsList').innerHTML = 
-                '<p class="text-muted">Выберите организацию</p>';
+            if (document.getElementById('manageSensorsList')) {
+                document.getElementById('manageSensorsList').innerHTML = 
+                    '<p class="text-muted">Выберите организацию</p>';
+            }
         }
     });
 }
 
-// Переключение между видами
 function switchView(view) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('view-active'));
     document.getElementById(view + 'View').classList.add('view-active');
@@ -183,10 +131,13 @@ function switchView(view) {
     
     if (view === 'manage' && currentOrganization) {
         loadSensorsForManagement();
+    } else if (view === 'monitor') {
+        if (typeof initMapOnce === 'function') {
+            setTimeout(() => initMapOnce(), 100);
+        }
     }
 }
 
-// Открыть личный кабинет
 function openUserProfile() {
     document.getElementById('profileModal').classList.add('active');
     loadProfileData();
@@ -196,14 +147,12 @@ function closeUserProfile() {
     document.getElementById('profileModal').classList.remove('active');
 }
 
-// Загрузить данные профиля
 async function loadProfileData() {
     document.getElementById('profileName').value = currentUser.name || '';
     document.getElementById('profileEmail').value = currentUser.email || '';
     document.getElementById('profilePhone').value = currentUser.phone || '';
     document.getElementById('profileRole').value = currentUser.role;
     
-    // Загружаем организации
     const orgsContainer = document.getElementById('profileOrganizations');
     orgsContainer.innerHTML = userOrganizations.map(org => `
         <div class="org-item">
@@ -215,7 +164,6 @@ async function loadProfileData() {
     `).join('');
 }
 
-// Сохранить профиль
 async function saveProfile() {
     const name = document.getElementById('profileName').value;
     const email = document.getElementById('profileEmail').value;
@@ -255,6 +203,8 @@ async function saveProfile() {
 
 function showSuccessMessage(text) {
     const successEl = document.getElementById('profileSuccess');
+    if (!successEl) return;
+    
     successEl.textContent = text;
     successEl.style.display = 'block';
     
@@ -263,7 +213,6 @@ function showSuccessMessage(text) {
     }, 3000);
 }
 
-// Обработчик события смены ЧП
 window.addEventListener('timezoneChanged', function() {
     if (currentOrganization) {
         loadSensorsForOrganization(currentOrganization.id);

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход - Distoring</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='28'>📡</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #151933;
+            --bg-tertiary: #1e2442;
+            --accent: #00d4ff;
+            --accent-hover: #00b8e6;
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa0a6;
+            --border: #2d3451;
+            --danger: #f44336;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1e2442 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+
+        .login-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 48px 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .login-icon {
+            width: 64px;
+            height: 64px;
+            color: var(--accent);
+            margin-bottom: 16px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .login-header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--accent);
+        }
+
+        .login-header p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .login-form {
+            margin-bottom: 32px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+            background: var(--bg-secondary);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .error-message {
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            display: none;
+            animation: shake 0.3s ease;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: none;
+            background: var(--accent);
+            color: #000;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 212, 255, 0.2);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .login-footer {
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-secondary);
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .login-footer p {
+            margin: 8px 0;
+            line-height: 1.5;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .btn.loading {
+            pointer-events: none;
+        }
+
+        @media (max-width: 480px) {
+            .login-box {
+                padding: 32px 24px;
+            }
+
+            .login-header h1 {
+                font-size: 24px;
+            }
+
+            .login-icon {
+                width: 48px;
+                height: 48px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <svg viewBox="0 0 24 24" fill="currentColor" class="login-icon">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                </svg>
+                <h1>Distoring</h1>
+                <p>IoT Sensor Monitoring System</p>
+            </div>
+
+            <div id="loginError" class="error-message"></div>
+
+            <div class="login-form">
+                <div class="form-group">
+                    <label class="form-label">Email или телефон</label>
+                    <input type="text" class="form-input" id="loginInput" placeholder="example@email.com или +7..." autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" class="form-input" id="loginPassword" placeholder="Введите пароль">
+                </div>
+
+                <button class="btn" id="loginBtn" onclick="handleLogin()">Войти</button>
+            </div>
+
+            <div class="login-footer">
+                <p>Систему администрирует только администратор</p>
+                <p style="margin-top: 8px; font-size: 12px;">
+                    Для регистрации нового аккаунта обратитесь к администратору системы
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'api.php';
+
+        // Enter key to login
+        document.getElementById('loginPassword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
+
+        async function handleLogin() {
+            const login = document.getElementById('loginInput').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+            const errorEl = document.getElementById('loginError');
+            const loginBtn = document.getElementById('loginBtn');
+
+            if (!login || !password) {
+                showError('Заполните все поля');
+                return;
+            }
+
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<span class="loading-spinner"></span>Вход...';
+
+            try {
+                const response = await fetch(`${API_URL}?action=login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ login, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('auth_token', data.token);
+                    // Проверяем роль пользователя
+                    if (data.user.is_super_admin || data.user.role === 'admin') {
+                        window.location.href = 'admin.html?token=' + encodeURIComponent(data.token);
+                    } else {
+                        window.location.href = 'index.html?token=' + encodeURIComponent(data.token);
+                    }
+                } else {
+                    showError(data.error || 'Ошибка входа');
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Войти';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showError('Ошибка сети');
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Войти';
+            }
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('loginError');
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+
+            setTimeout(() => {
+                errorEl.classList.remove('show');
+            }, 4000);
+        }
+    </script>
+</body>
+</html>

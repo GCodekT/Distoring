@@ -623,3 +623,195 @@ if ($action === 'update_profile') {
 
 logDebug('Unknown action: ' . $action);
 jsonResponse(['success' => false, 'error' => 'Unknown action: ' . $action], 400);
+
+// ========== АДМИН ЭНДПОИНТЫ ==========
+
+// Создать пользовател�� (только админ)
+if ($action === 'admin_create_user') {
+    $user = getCurrentUser($db);
+    if (!$user || !$user['is_super_admin']) {
+        jsonResponse(['success' => false, 'error' => 'Access denied'], 403);
+    }
+    
+    $data = json_decode(file_get_contents('php://input'), true);
+    $email = $data['email'] ?? null;
+    $phone = $data['phone'] ?? null;
+    $name = $data['name'] ?? '';
+    $password = $data['password'] ?? null;
+    $roleId = $data['role_id'] ?? 4;
+    $orgId = $data['organization_id'] ?? null;
+    
+    if (!$email || !$password) {
+        jsonResponse(['success' => false, 'error' => 'Email and password required'], 400);
+    }
+    
+    try {
+        $stmt = $db->prepare("SELECT id FROM users WHERE email = ? OR phone = ?");
+        $stmt->execute([$email, $phone]);
+        if ($stmt->fetch()) {
+            jsonResponse(['success' => false, 'error' => 'User already exists'], 409);
+        }
+        
+        $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+        
+        $stmt = $db->prepare("
+            INSERT INTO users (email, phone, password_hash, name, role_id, is_verified, is_active)
+            VALUES (?, ?, ?, ?, ?, 1, 1)
+        ");
+        $stmt->execute([$email, $phone, $passwordHash, $name, $roleId]);
+        $userId = $db->lastInsertId();
+        
+        // Если указана организация, добавляем пользователя
+        if ($orgId) {
+            $stmt = $db->prepare("
+                INSERT INTO user_organizations (user_id, organization_id, role_id)
+                VALUES (?, ?, ?)
+            ");
+            $stmt->execute([$userId, $orgId, $roleId]);
+        }
+        
+        logDebug('User created by admin: ' . $email);
+        jsonResponse(['success' => true, 'user_id' => $userId]);
+        
+    } catch (Exception $e) {
+        jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
+    }
+}
+
+// Удалить пользователя (только админ)
+if ($action === 'admin_delete_user') {
+    $user = getCurrentUser($db);
+    if (!$user || !$user['is_super_admin']) {
+        jsonResponse(['success' => false, 'error' => 'Access denied'], 403);
+    }
+    
+    $data = json_decode(file_get_contents('php://input'), true);
+    $userId = $data['user_id'] ?? null;
+    
+    if (!$userId) {
+        jsonResponse(['success' => false, 'error' => 'User ID required'], 400);
+    }
+    
+    try {
+        $stmt = $db->prepare("UPDATE users SET is_active = 0 WHERE id = ? AND id != ?");
+        $stmt->execute([$userId, $user['id']]);
+        
+        jsonResponse(['success' => true]);
+    } catch (Exception $e) {
+        jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
+    }
+}
+
+// Получить всех пользователей (только админ)
+if ($action === 'admin_get_users') {
+    $user = getCurrentUser($db);
+    if (!$user || !$user['is_super_admin']) {
+        jsonResponse(['success' => false, 'error' => 'Access denied'], 403);
+    }
+    
+    try {
+        $stmt = $db->query("
+            SELECT u.id, u.email, u.phone, u.name, u.is_active,
+                   r.name as role_name
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            ORDER BY u.created_at DESC
+        ");
+        
+        jsonResponse(['success' => true, 'users' => $stmt->fetchAll()]);
+    } catch (Exception $e) {
+        jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
+    }
+}
+
+// Создать организацию (только админ)
+if ($action === 'admin_create_organization') {
+    $user = getCurrentUser($db);
+    if (!$user || !$user['is_super_admin']) {
+        jsonResponse(['success' => false, 'error' => 'Access denied'], 403);
+    }
+    
+    $data = json_decode(file_get_contents('php://input'), true);
+    $name = $data['name'] ?? null;
+    
+    if (!$name) {
+        jsonResponse(['success' => false, 'error' => 'Organization name required'], 400);
+    }
+    
+    try {
+        $stmt = $db->prepare("
+            INSERT INTO organizations (name, created_by, is_active)
+            VALUES (?, ?, 1)
+        ");
+        $stmt->execute([$name, $user['id']]);
+        $orgId = $db->lastInsertId();
+        
+        jsonResponse(['success' => true, 'organization_id' => $orgId]);
+    } catch (Exception $e) {
+        jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
+    }
+}
+
+// Удалить организацию (только админ)
+if ($action === 'admin_delete_organization') {
+    $user = getCurrentUser($db);
+    if (!$user || !$user['is_super_admin']) {
+        jsonResponse(['success' => false, 'error' => 'Access denied'], 403);
+    }
+    
+    $data = json_decode(file_get_contents('php://input'), true);
+    $orgId = $data['organization_id'] ?? null;
+    
+    if (!$orgId) {
+        jsonResponse(['success' => false, 'error' => 'Organization ID required'], 400);
+    }
+    
+    try {
+        $stmt = $db->prepare("UPDATE organizations SET is_active = 0 WHERE id = ?");
+        $stmt->execute([$orgId]);
+        
+        jsonResponse(['success' => true]);
+    } catch (Exception $e) {
+        jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
+    }
+}
+
+// Получить организации (только админ)
+if ($action === 'admin_get_organizations') {
+    $user = getCurrentUser($db);
+    if (!$user || !$user['is_super_admin']) {
+        jsonResponse(['success' => false, 'error' => 'Access denied'], 403);
+    }
+    
+    try {
+        $stmt = $db->query("
+            SELECT id, name, created_at, is_active
+            FROM organizations
+            ORDER BY created_at DESC
+        ");
+        
+        jsonResponse(['success' => true, 'organizations' => $stmt->fetchAll()]);
+    } catch (Exception $e) {
+        jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
+    }
+}
+
+// Получить датчики (только админ)
+if ($action === 'admin_get_sensors') {
+    $user = getCurrentUser($db);
+    if (!$user || !$user['is_super_admin']) {
+        jsonResponse(['success' => false, 'error' => 'Access denied'], 403);
+    }
+    
+    try {
+        $stmt = $db->query("
+            SELECT id, device_id, name, last_seen, is_active
+            FROM sensors
+            ORDER BY last_seen DESC LIMIT 1000
+        ");
+        
+        jsonResponse(['success' => true, 'sensors' => $stmt->fetchAll()]);
+    } catch (Exception $e) {
+        jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
+    }
+}
