@@ -1,0 +1,18 @@
+RewriteEngine On
+
+# Редирект на HTTPS
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Маскировка админки
+RewriteRule ^admin\.html$ admin.php [L,QSA]
+
+# Запрет доступа к важным файлам
+<FilesMatch "config\.php|database\.sql|\.htaccess">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+Options -Indexes
+AddDefaultCharset UTF-8
