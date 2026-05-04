@@ -31,6 +31,9 @@ $allOrganizations = [];
 if ($role === 'engineer') {
     $allOrganizations = $pdo->query("SELECT id, name FROM organizations ORDER BY name ASC")->fetchAll();
 }
+
+echo "Ваша роль: " . $_SESSION['role'];
+
 ?>
 <!DOCTYPE html>
 <html lang="ru">
