@@ -27,3 +27,27 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE INDEX idx_email ON users(email);
 CREATE INDEX idx_phone ON users(phone);
 CREATE INDEX idx_organization ON users(organization_id);
+
+-- Таблица конфигурации датчиков
+CREATE TABLE IF NOT EXISTS sensors (
+    id VARCHAR(50) PRIMARY KEY, -- DEVICE_ID из скетча
+    organization_id INT NULL,   -- Привязка к организации
+    lat DECIMAL(10, 6) DEFAULT 55.008353, -- Координаты (по умолчанию Новосибирск)
+    lng DECIMAL(11, 6) DEFAULT 82.935733,
+    last_seen DATETIME NULL,
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL
+);
+
+-- Таблица логов (измерений)
+CREATE TABLE IF NOT EXISTS sensor_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sensor_id VARCHAR(50),
+    voltage FLOAT,
+    charge INT,
+    roll FLOAT,
+    pitch FLOAT,
+    temp FLOAT,
+    status VARCHAR(20),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sensor_id) REFERENCES sensors(id) ON DELETE CASCADE
+);
