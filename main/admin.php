@@ -22,6 +22,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_password'])) {
     }
 }
 
+/**
+ * Функция для валидации email
+ */
+function validateEmail($email) {
+    if (empty($email)) {
+        return true; // Email опциональный
+    }
+    
+    // Проверяем формат email: адрес + @ + домен + точка + расширение
+    if (!preg_match('/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/', $email)) {
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * Функция для валидации телефона
+ */
+function validatePhone($phone) {
+    if (empty($phone)) {
+        return true; // Телефон опциональный
+    }
+    
+    // Проверяем, что телефон начинается с +
+    if ($phone[0] !== '+') {
+        return false;
+    }
+    
+    // Проверяем, что остаток содержит только цифры (от 10 до 15)
+    $digits = substr($phone, 1);
+    if (!preg_match('/^\d{10,15}$/', $digits)) {
+        return false;
+    }
+    
+    return true;
+}
+
 // Обработка создания организации
 if ($admin_authenticated && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create_organization') {
     $org_name = trim($_POST['org_name'] ?? '');
@@ -51,8 +89,15 @@ if ($admin_authenticated && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POS
     $role = $_POST['role'] ?? 'employee';
     $org_id = !empty($_POST['organization_id']) ? intval($_POST['organization_id']) : null;
     
-    if ((empty($email) && empty($phone)) || empty($password)) {
-        $error = 'Заполните email или телефон, и пароль';
+    // Валидация
+    if (empty($email) && empty($phone)) {
+        $error = 'Заполните email или телефон';
+    } elseif (!empty($email) && !validateEmail($email)) {
+        $error = 'Некорректный email. Используйте формат: example@mail.ru';
+    } elseif (!empty($phone) && !validatePhone($phone)) {
+        $error = 'Некорректный номер телефона. Используйте формат: +79001234567 (начинается с +)';
+    } elseif (empty($password)) {
+        $error = 'Введите пароль';
     } else {
         try {
             $password_hash = password_hash($password, PASSWORD_DEFAULT);
@@ -269,6 +314,12 @@ if (isset($_GET['logout'])) {
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
         
+        input.error,
+        input.error:focus {
+            border-color: #e74c3c;
+            box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+        }
+        
         .btn {
             padding: 12px 24px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -356,6 +407,17 @@ if (isset($_GET['logout'])) {
             font-size: 13px;
             margin-top: 6px;
         }
+
+        .validation-hint {
+            color: #e74c3c;
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .validation-hint.show {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -411,7 +473,7 @@ if (isset($_GET['logout'])) {
             <div id="tab-users" class="tab-content active">
                 <div class="card">
                     <h2>Создать пользователя</h2>
-                    <form method="POST">
+                    <form method="POST" id="userForm">
                         <input type="hidden" name="action" value="create_user">
                         
                         <div class="form-group">
@@ -421,8 +483,11 @@ if (isset($_GET['logout'])) {
                                 id="email" 
                                 name="email" 
                                 placeholder="example@mail.ru"
+                                onchange="validateEmailField(this)"
+                                onblur="validateEmailField(this)"
                             >
                             <div class="hint">Оставьте пустым, если используете только телефон</div>
+                            <div class="validation-hint" id="emailHint">Email должен содержать @ и расширение домена (.ru, .com и т.д.)</div>
                         </div>
                         
                         <div class="form-group">
@@ -432,8 +497,11 @@ if (isset($_GET['logout'])) {
                                 id="phone" 
                                 name="phone" 
                                 placeholder="+79001234567"
+                                onchange="validatePhoneField(this)"
+                                onblur="validatePhoneField(this)"
                             >
                             <div class="hint">Оставьте пустым, если используете только email</div>
+                            <div class="validation-hint" id="phoneHint">Номер должен начинаться с + и содержать 10-15 цифр (+79001234567)</div>
                         </div>
                         
                         <div class="form-group">
@@ -595,6 +663,72 @@ if (isset($_GET['logout'])) {
                 // Делаем активной нужную кнопку
                 event.target.classList.add('active');
             }
+
+            // Валидация email на клиенте
+            function validateEmailField(input) {
+                const emailRegex = /^[a-zA-Z0-9._-]*@?[a-zA-Z0-9.-]*\.?[a-zA-Z]*$/;
+                const hint = document.getElementById('emailHint');
+                
+                if (input.value === '') {
+                    input.classList.remove('error');
+                    hint.classList.remove('show');
+                    return;
+                }
+                
+                // Проверяем полный формат
+                const fullEmailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                
+                if (!fullEmailRegex.test(input.value)) {
+                    input.classList.add('error');
+                    hint.classList.add('show');
+                } else {
+                    input.classList.remove('error');
+                    hint.classList.remove('show');
+                }
+            }
+
+            // Валидация телефона на клиенте
+            function validatePhoneField(input) {
+                const hint = document.getElementById('phoneHint');
+                
+                if (input.value === '') {
+                    input.classList.remove('error');
+                    hint.classList.remove('show');
+                    return;
+                }
+                
+                const phoneRegex = /^\+\d{10,15}$/;
+                
+                if (!phoneRegex.test(input.value)) {
+                    input.classList.add('error');
+                    hint.classList.add('show');
+                } else {
+                    input.classList.remove('error');
+                    hint.classList.remove('show');
+                }
+            }
+
+            // Валидация при отправке формы
+            document.getElementById('userForm').addEventListener('submit', function(e) {
+                const email = document.getElementById('email');
+                const phone = document.getElementById('phone');
+                
+                if (email.value) {
+                    validateEmailField(email);
+                    if (email.classList.contains('error')) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }
+                
+                if (phone.value) {
+                    validatePhoneField(phone);
+                    if (phone.classList.contains('error')) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }
+            });
         </script>
     <?php endif; ?>
 </body>
