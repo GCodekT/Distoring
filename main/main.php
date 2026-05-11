@@ -42,7 +42,6 @@ if ($role === 'engineer') {
     
     <!-- Подключаем стили MapLibre и Chart.js (для будущего) -->
     <link href="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.css" rel="stylesheet" />
-    <!-- Подключаем конвертер часовых поясов -->
     <script src="../timezone-converter.js"></script>
     
     <style>
@@ -57,51 +56,43 @@ if ($role === 'engineer') {
         
         /* Боковая панель */
         .sidebar { width: var(--sidebar-width); background: var(--primary-dark); color: white; display: flex; flex-direction: column; z-index: 10; box-shadow: 2px 0 5px rgba(0,0,0,0.3); }
-        .sidebar-header { padding: 20px; background: #1a252f; font-size: 1.1em; font-weight: bold; border-bottom: 1px solid #34495e; }
+        .sidebar-header { padding: 20px; background: #1a252f; font-size: 1.1em; font-weight: bold; border-bottom: 1px solid #34495e; display: flex; justify-content: space-between; align-items: center; }
         
-        /* Выпадающее меню часовых поясов */
         .timezone-selector-wrapper {
-            padding: 15px;
-            background: #1a252f;
-            border-bottom: 1px solid #34495e;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
+            margin-bottom: 15px;
         }
 
         .timezone-selector-wrapper label {
-            font-size: 0.9em;
-            color: #bdc3c7;
-            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #95a5a6;
+            letter-spacing: 0.5px;
         }
 
         .timezone-selector-wrapper select {
             background: #34495e;
+            border: 1px solid #455a64;
             color: white;
-            border: 1px solid #3498db;
-            padding: 8px 10px;
+            padding: 8px;
             border-radius: 4px;
+            font-size: 12px;
             cursor: pointer;
-            font-size: 0.85em;
-            transition: all 0.3s ease;
         }
 
-        .timezone-selector-wrapper select:hover,
-        .timezone-selector-wrapper select:focus {
-            background: #3e5567;
-            border-color: #5dade2;
-            outline: none;
-            box-shadow: 0 0 8px rgba(52, 152, 219, 0.3);
+        .timezone-selector-wrapper select:hover {
+            border-color: var(--accent-blue);
         }
 
-        .admin-panel { padding: 15px; background: #1a252f; border-bottom: 1px solid #34495e; }
+        .admin-panel { padding: 15px; background: #1a252f; border-bottom: 1px solid #34495e; display: flex; flex-direction: column; gap: 10px; }
         .sensor-list { flex-grow: 1; overflow-y: auto; }
         
         .sensor-item { padding: 15px; border-bottom: 1px solid #3e4f5f; cursor: pointer; transition: 0.2s; }
         .sensor-item:hover { background: #34495e; }
         .sensor-id { font-weight: bold; font-size: 1.1em; display: block; color: var(--accent-blue); }
         .sensor-meta { font-size: 0.85em; color: #bdc3c7; margin-top: 5px; }
-        .sensor-timestamp { font-size: 0.75em; color: #95a5a6; margin-top: 3px; }
 
         /* Карта и кнопки */
         .main-content { flex-grow: 1; position: relative; }
@@ -114,6 +105,7 @@ if ($role === 'engineer') {
         
         .btn { padding: 10px 18px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; }
         .btn-add { background: #27ae60; color: white; width: 100%; justify-content: center; }
+        .btn-users { background: #3498db; color: white; width: 100%; justify-content: center; }
         .btn-profile { background: white; color: var(--primary-dark); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .btn-logout { background: var(--danger-red); color: white; }
 
@@ -128,23 +120,34 @@ if ($role === 'engineer') {
         #search-results { border: 1px solid #ddd; border-top: none; max-height: 150px; overflow-y: auto; display: none; background: #fff; }
         .search-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
         .search-item:hover { background: #f0f7ff; }
+
+        @media (max-width: 768px) {
+            :root {
+                --sidebar-width: 280px;
+            }
+        }
     </style>
 </head>
 <body>
 
     <!-- Боковое меню -->
     <div class="sidebar">
-        <div class="sidebar-header">📍 Мониторинг датчиков</div>
-        
-        <!-- Селектор часовых поясов -->
-        <div class="timezone-selector-wrapper">
-            <label for="tzSelect">Часовой пояс:</label>
-            <select id="tzSelect"></select>
+        <div class="sidebar-header">
+            📍 Мониторинг датчиков
         </div>
         
+        <!-- Селектор часовых поясов -->
+        <div class="admin-panel">
+            <div class="timezone-selector-wrapper">
+                <label for="tzSelect">Часовой пояс:</label>
+                <select id="tzSelect"></select>
+            </div>
+        </div>
+
         <?php if ($role === 'engineer'): ?>
         <div class="admin-panel">
             <button class="btn btn-add" onclick="openModal()">➕ Добавить датчик</button>
+            <button class="btn btn-users" onclick="goToUsers()">👥 Управл. пользователями</button>
         </div>
         <?php endif; ?>
 
@@ -157,9 +160,8 @@ if ($role === 'engineer') {
                     <span class="sensor-id"><?= htmlspecialchars($s['id']) ?></span>
                     <div class="sensor-meta">
                         🔋 <?= $s['charge'] !== null ? $s['charge'].'%' : '??' ?> | 
-                        🕒 <span class="sensor-time" data-timestamp="<?= $s['last_time'] ?>"><?= $s['last_time'] ? 'загрузка...' : 'Нет замеров' ?></span>
+                        🕒 <span class="sensor-time"><?= $s['last_time'] ? date('H:i d.m', strtotime($s['last_time'])) : 'Нет замеров' ?></span>
                     </div>
-                    <div class="sensor-timestamp" data-timestamp="<?= $s['last_time'] ?>"></div>
                 </div>
                 <?php endforeach; ?>
             <?php endif; ?>
@@ -213,7 +215,7 @@ if ($role === 'engineer') {
                     </div>
                 </div>
 
-                <button type="button" onclick="setNovosibirsk()" style="margin-bottom: 15px; cursor: pointer; background: none; border: 1px solid #3498db; color: #3498db; padding: 5px; border-radius: 4px; width: 100%;;">Использовать Новосибирск</button>
+                <button type="button" onclick="setNovosibirsk()" style="margin-bottom: 15px; cursor: pointer; background: none; border: 1px solid #3498db; color: #3498db; padding: 5px; border-radius: 5px; width: 100%;">Новосибирск (тест)</button>
 
                 <div style="display: flex; gap: 10px; margin-top: 10px;">
                     <button type="submit" class="btn" style="background: #27ae60; color: white; flex: 1; justify-content: center;">Привязать</button>
@@ -227,36 +229,7 @@ if ($role === 'engineer') {
     <!-- Скрипты -->
     <script src="https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.js"></script>
     <script>
-        // --- 1. Инициализация конвертера часовых поясов ---
-        document.addEventListener('DOMContentLoaded', function() {
-            initTimezoneSelector(document.getElementById('tzSelect'));
-            updateSensorTimestamps();
-        });
-
-        // Обновление времени датчиков при смене часового пояса
-        window.addEventListener('timezoneChanged', function() {
-            updateSensorTimestamps();
-            updateMapPopups();
-        });
-
-        // Функция обновления времени в боковой панели
-        function updateSensorTimestamps() {
-            document.querySelectorAll('.sensor-time').forEach(el => {
-                const timestamp = el.getAttribute('data-timestamp');
-                if (timestamp && timestamp !== 'null') {
-                    el.textContent = formatDateInTimezone(timestamp, 'short');
-                }
-            });
-
-            document.querySelectorAll('.sensor-timestamp').forEach(el => {
-                const timestamp = el.getAttribute('data-timestamp');
-                if (timestamp && timestamp !== 'null') {
-                    el.textContent = formatDateInTimezone(timestamp, 'time');
-                }
-            });
-        }
-
-        // --- 2. Инициализация карты ---
+        // --- 1. Инициализация карты ---
         const map = new maplibregl.Map({
             container: 'map',
             style: {
@@ -270,54 +243,56 @@ if ($role === 'engineer') {
             zoom: 11
         });
 
-        // --- 3. Добавление маркеров датчиков ---
+        // --- 2. Инициализация селектора часовых поясов ---
+        document.addEventListener('DOMContentLoaded', function() {
+            initTimezoneSelector(document.getElementById('tzSelect'));
+            updateSensorTimes();
+        });
+
+        // --- 3. Обновление времени датчиков при смене часового пояса ---
+        window.addEventListener('timezoneChanged', function() {
+            updateSensorTimes();
+        });
+
+        function updateSensorTimes() {
+            const sensorsData = <?= json_encode($mySensors) ?>;
+            document.querySelectorAll('.sensor-time').forEach((element, index) => {
+                if (sensorsData[index] && sensorsData[index].last_time) {
+                    element.textContent = formatDateInTimezone(sensorsData[index].last_time, 'short').slice(9);
+                }
+            });
+        }
+
+        // --- 4. Добавление маркеров датчиков ---
         const sensorsData = <?= json_encode($mySensors) ?>;
-        const markers = {};
         
         sensorsData.forEach(s => {
             if (!s.lat || !s.lng) return;
 
-            const popupContent = generatePopupContent(s);
-            const popup = new maplibregl.Popup({ offset: 25 }).setHTML(popupContent);
+            const popup = new maplibregl.Popup({ offset: 25 }).setHTML(`
+                <div style="font-family: sans-serif; min-width: 150px;">
+                    <b style="color: #2980b9;">${s.id}</b><br>
+                    <hr>
+                    Заряд: <b>${s.charge || '??'}%</b><br>
+                    Последний замер: <br><small id="popup-time">${s.last_time || 'нет'}</small><br>
+                    <a href="sensor_details.php?id=${s.id}" style="display: block; margin-top: 8px; color: #3498db; font-weight: bold; text-decoration: none;">📄 Подробнее</a>
+                </div>
+            `);
 
-            markers[s.id] = new maplibregl.Marker({ color: s.charge < 20 ? '#e74c3c' : '#3498db' })
+            new maplibregl.Marker({ color: s.charge < 20 ? '#e74c3c' : '#3498db' })
                 .setLngLat([parseFloat(s.lng), parseFloat(s.lat)])
                 .setPopup(popup)
                 .addTo(map);
         });
 
-        // Функция для генерации содержимого попапа
-        function generatePopupContent(s) {
-            const timeStr = s.last_time ? formatDateInTimezone(s.last_time, 'full') : 'нет';
-            return `
-                <div style="font-family: sans-serif; min-width: 150px;">
-                    <b style="color: #2980b9;">${s.id}</b><br>
-                    <hr>
-                    Заряд: <b>${s.charge || '??'}%</b><br>
-                    Последний замер: <br><small>${timeStr}</small><br>
-                    <a href="sensor_details.php?id=${s.id}" style="display: block; margin-top: 8px; color: #3498db; font-weight: bold; text-decoration: none;">📄 Подробнее</a>
-                </div>
-            `;
-        }
-
-        // Обновление попапов на карте при смене часового пояса
-        function updateMapPopups() {
-            sensorsData.forEach(s => {
-                if (markers[s.id]) {
-                    markers[s.id].setPopup(
-                        new maplibregl.Popup({ offset: 25 }).setHTML(generatePopupContent(s))
-                    );
-                }
-            });
-        }
-
         function flyToSensor(lng, lat) {
             map.flyTo({ center: [lng, lat], zoom: 16, essential: true });
         }
 
-        // --- 4. Логика модального окна и AJAX поиска ---
+        // --- 5. Логика модального окна и AJAX поиска ---
         function openModal() { document.getElementById('addSensorModal').style.display = 'block'; }
         function closeModal() { document.getElementById('addSensorModal').style.display = 'none'; }
+        function goToUsers() { window.location.href = 'engineer_users.php'; }
         function setNovosibirsk() {
             document.getElementById('latInput').value = "55.008353";
             document.getElementById('lngInput').value = "82.935733";
