@@ -16,6 +16,7 @@ $latest = end($allLogs);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Детали датчика <?= htmlspecialchars($sensorId) ?></title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../timezone-converter.js"></script>
     <style>
         * {
             margin: 0;
@@ -56,6 +57,13 @@ $latest = end($allLogs);
             font-weight: 600;
         }
 
+        .header-right {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
         .btn-back {
             background: var(--bg-secondary);
             border: 1px solid var(--accent);
@@ -70,6 +78,37 @@ $latest = end($allLogs);
         .btn-back:hover {
             background: var(--accent);
             color: var(--bg-primary);
+        }
+
+        .timezone-selector-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .timezone-selector-wrapper label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+        }
+
+        .timezone-selector-wrapper select {
+            background: var(--bg-secondary);
+            border: 1px solid var(--bg-tertiary);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .timezone-selector-wrapper select:hover,
+        .timezone-selector-wrapper select:focus {
+            border-color: var(--accent);
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.2);
         }
 
         .container {
@@ -190,8 +229,21 @@ $latest = end($allLogs);
                 align-items: flex-start;
             }
 
+            .header-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+
             .stat-value {
                 font-size: 20px;
+            }
+
+            .timezone-selector-wrapper {
+                width: 100%;
+            }
+
+            .timezone-selector-wrapper select {
+                flex: 1;
             }
         }
     </style>
@@ -200,7 +252,13 @@ $latest = end($allLogs);
     <div class="container">
         <div class="header">
             <h1>Датчик: <?= htmlspecialchars($sensorId) ?></h1>
-            <button class="btn-back" onclick="goBack()">← На главную</button>
+            <div class="header-right">
+                <div class="timezone-selector-wrapper">
+                    <label for="tzSelect">Часовой пояс:</label>
+                    <select id="tzSelect"></select>
+                </div>
+                <button class="btn-back" onclick="goBack()">← На главную</button>
+            </div>
         </div>
 
         <?php if ($latest): ?>
@@ -244,7 +302,7 @@ $latest = end($allLogs);
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Последнее обновление</div>
-                    <div class="stat-value" style="font-size: 14px;">
+                    <div id="lastUpdateTime" class="stat-value" style="font-size: 14px;">
                         <?= date('d.m.Y H:i:s', strtotime($latest['created_at'])) ?>
                     </div>
                 </div>
@@ -316,6 +374,7 @@ $latest = end($allLogs);
     <script>
         // Данные датчика из PHP
         const allLogs = <?= json_encode($allLogs) ?>;
+        const latestData = <?= json_encode($latest) ?>;
         
         let charts = {};
         const chartConfig = {
@@ -324,6 +383,21 @@ $latest = end($allLogs);
             pitch: { canvas: 'pitchChart', type: 'pitch', label: 'Тангаж (°)' },
             temperature: { canvas: 'temperatureChart', type: 'temp', label: 'Температура (°C)' }
         };
+
+        // Инициализация селектора часовых поясов
+        document.addEventListener('DOMContentLoaded', function() {
+            initTimezoneSelector(document.getElementById('tzSelect'));
+            updateLastUpdateTime();
+            initCharts();
+        });
+
+        // Обновление времени последнего обновления
+        function updateLastUpdateTime() {
+            const lastUpdateElement = document.getElementById('lastUpdateTime');
+            if (lastUpdateElement && latestData) {
+                lastUpdateElement.textContent = formatDateInTimezone(latestData.created_at, 'full');
+            }
+        }
 
         // Функция для фильтрации данных по времени
         function getFilteredData(minutes) {
@@ -341,11 +415,8 @@ $latest = end($allLogs);
         }
 
         // Функция конвертации времени для графика
-        function convertTimestamps(logs) {
-            return logs.map(log => {
-                const date = new Date(log.created_at);
-                return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-            });
+        function convertTimestampsForCharts(logs) {
+            return logs.map(log => formatDateInTimezone(log.created_at, 'time'));
         }
 
         // Создание графика
@@ -385,7 +456,7 @@ $latest = end($allLogs);
 
             // График заряда и напряжения
             charts.battery = createChart('batteryChart', {
-                labels: convertTimestamps(filtered),
+                labels: convertTimestampsForCharts(filtered),
                 datasets: [{
                     label: 'Заряд (%)',
                     data: filtered.map(l => l.charge),
@@ -405,7 +476,7 @@ $latest = end($allLogs);
 
             // График крена
             charts.roll = createChart('rollChart', {
-                labels: convertTimestamps(filtered),
+                labels: convertTimestampsForCharts(filtered),
                 datasets: [{
                     label: 'Крен (°)',
                     data: filtered.map(l => l.roll),
@@ -418,7 +489,7 @@ $latest = end($allLogs);
 
             // График тангажа
             charts.pitch = createChart('pitchChart', {
-                labels: convertTimestamps(filtered),
+                labels: convertTimestampsForCharts(filtered),
                 datasets: [{
                     label: 'Тангаж (°)',
                     data: filtered.map(l => l.pitch),
@@ -431,7 +502,7 @@ $latest = end($allLogs);
 
             // График температуры
             charts.temperature = createChart('temperatureChart', {
-                labels: convertTimestamps(filtered),
+                labels: convertTimestampsForCharts(filtered),
                 datasets: [{
                     label: 'Температура (°C)',
                     data: filtered.map(l => l.temp),
@@ -450,7 +521,7 @@ $latest = end($allLogs);
             const filtered = getFilteredData(minutes);
             const chart = charts[chartName];
 
-            chart.data.labels = convertTimestamps(filtered);
+            chart.data.labels = convertTimestampsForCharts(filtered);
 
             if (chartName === 'battery') {
                 chart.data.datasets[0].data = filtered.map(l => l.charge);
@@ -486,13 +557,20 @@ $latest = end($allLogs);
             });
         }
 
+        // Обработчик изменения часового пояса
+        window.addEventListener('timezoneChanged', function() {
+            updateLastUpdateTime();
+            document.querySelectorAll('.filter-btn.active').forEach(btn => {
+                const chartName = btn.dataset.chart;
+                const minutes = btn.dataset.period;
+                updateChart(chartName, minutes === 'all' ? 'all' : parseInt(minutes));
+            });
+        });
+
         // Кнопка возврата
         function goBack() {
             window.location.href = 'main.php';
         }
-
-        // Инициализация при загрузке страницы
-        document.addEventListener('DOMContentLoaded', initCharts);
     </script>
 </body>
 </html>
