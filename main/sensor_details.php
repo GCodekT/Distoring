@@ -73,7 +73,7 @@ $criticalStatus = checkCriticalStatus($sensorInfo, $latest);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Детали датчика <?= htmlspecialchars($sensorId) ?></title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="../js/timezone-converter.js"></script>
+    <script src="../timezone-converter.js"></script>
     <style>
         * {
             margin: 0;
