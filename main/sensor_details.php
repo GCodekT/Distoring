@@ -2,12 +2,69 @@
 require_once 'config.php';
 $sensorId = $_GET['id'] ?? '';
 
-// Получаем все доступные данные для последних 7 дней (макс для демо)
+// Проверка авторизации
+if (!isset($_SESSION['user_id'])) {
+    header("Location: index.php");
+    exit;
+}
+
+$userId = $_SESSION['user_id'];
+$userRole = $_SESSION['role'] ?? 'employee';
+
+// Получаем все доступные данные для последних 7 дней
 $stmt = $pdo->prepare("SELECT * FROM sensor_logs WHERE sensor_id = ? ORDER BY created_at DESC LIMIT 10000");
 $stmt->execute([$sensorId]);
-$allLogs = array_reverse($stmt->fetchAll()); // Переворачиваем для хронологии
+$allLogs = array_reverse($stmt->fetchAll());
+
+// Получаем информацию о датчике
+$stmt = $pdo->prepare("SELECT * FROM sensors WHERE id = ?");
+$stmt->execute([$sensorId]);
+$sensorInfo = $stmt->fetch();
+
+// Проверяем принадлежность датчика организации пользователя
+if ($sensorInfo) {
+    // Если пользователь не инженер и датчик не его организации
+    if ($userRole === 'employee' && $sensorInfo['organization_id'] !== $_SESSION['organization_id']) {
+        header("Location: main.php");
+        exit;
+    }
+}
 
 $latest = end($allLogs);
+
+// Функция для проверки критического состояния
+function checkCriticalStatus($sensorInfo, $latest) {
+    if (!$latest || !$sensorInfo) {
+        return ['critical' => false, 'reasons' => []];
+    }
+    
+    $reasons = [];
+    $critical = false;
+    
+    // Проверка крена
+    $roll_diff = abs($latest['roll'] - $sensorInfo['roll_baseline']);
+    if ($roll_diff > $sensorInfo['roll_threshold']) {
+        $reasons[] = "Крен отклонился на " . round($roll_diff, 2) . "° (порог: " . $sensorInfo['roll_threshold'] . "°)";
+        $critical = true;
+    }
+    
+    // Проверка тангажа
+    $pitch_diff = abs($latest['pitch'] - $sensorInfo['pitch_baseline']);
+    if ($pitch_diff > $sensorInfo['pitch_threshold']) {
+        $reasons[] = "Тангаж отклонился на " . round($pitch_diff, 2) . "° (порог: " . $sensorInfo['pitch_threshold'] . "°)";
+        $critical = true;
+    }
+    
+    // Проверка батареи
+    if ($latest['charge'] < 20) {
+        $reasons[] = "Низкий заряд батареи (" . $latest['charge'] . "%)";
+        $critical = true;
+    }
+    
+    return ['critical' => $critical, 'reasons' => $reasons];
+}
+
+$criticalStatus = checkCriticalStatus($sensorInfo, $latest);
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -16,7 +73,7 @@ $latest = end($allLogs);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Детали датчика <?= htmlspecialchars($sensorId) ?></title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="../timezone-converter.js"></script>
+    <script src="../js/timezone-converter.js"></script>
     <style>
         * {
             margin: 0;
@@ -64,7 +121,7 @@ $latest = end($allLogs);
             flex-wrap: wrap;
         }
 
-        .btn-back {
+        .btn-back, .btn-edit {
             background: var(--bg-secondary);
             border: 1px solid var(--accent);
             color: var(--accent);
@@ -75,9 +132,13 @@ $latest = end($allLogs);
             transition: all 0.3s ease;
         }
 
-        .btn-back:hover {
+        .btn-back:hover, .btn-edit:hover {
             background: var(--accent);
             color: var(--bg-primary);
+        }
+
+        .btn-edit {
+            display: <?= $userRole === 'engineer' ? 'block' : 'none' ?>;
         }
 
         .timezone-selector-wrapper {
@@ -114,6 +175,47 @@ $latest = end($allLogs);
         .container {
             max-width: 1400px;
             margin: 0 auto;
+        }
+
+        .critical-alert {
+            background: rgba(255, 82, 82, 0.15);
+            border-left: 5px solid var(--danger);
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .critical-alert.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .critical-alert h3 {
+            color: var(--danger);
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .critical-alert ul {
+            margin-left: 20px;
+            color: var(--text-primary);
+        }
+
+        .critical-alert li {
+            margin: 4px 0;
+            font-size: 14px;
         }
 
         .stats-grid {
@@ -210,13 +312,193 @@ $latest = end($allLogs);
             width: 100%;
         }
 
-        .alert {
-            background: rgba(255, 82, 82, 0.1);
-            border-left: 4px solid var(--danger);
-            color: var(--danger);
-            padding: 12px 16px;
-            border-radius: 4px;
+        /* Модальное окно */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--bg-tertiary);
+            border-radius: 12px;
+            padding: 30px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 20px;
+            border-bottom: 1px solid var(--bg-tertiary);
+            padding-bottom: 15px;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 28px;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .close-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--bg-tertiary);
+            color: var(--text-primary);
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 8px rgba(0, 212, 255, 0.2);
+        }
+
+        .form-section {
+            background: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .form-section h3 {
+            font-size: 14px;
+            color: var(--accent);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            border-top: 1px solid var(--bg-tertiary);
+            padding-top: 20px;
+        }
+
+        .btn-primary, .btn-secondary, .btn-danger {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--bg-tertiary);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+        }
+
+        .btn-danger {
+            background: rgba(255, 82, 82, 0.2);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-auto {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-auto:hover {
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .hint {
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-top: 6px;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: rgba(76, 175, 80, 0.2);
+            border-left: 3px solid var(--success);
+            color: var(--success);
+        }
+
+        .alert-error {
+            background: rgba(255, 82, 82, 0.2);
+            border-left: 3px solid var(--danger);
+            color: var(--danger);
         }
 
         @media (max-width: 768px) {
@@ -234,16 +516,12 @@ $latest = end($allLogs);
                 justify-content: space-between;
             }
 
-            .stat-value {
-                font-size: 20px;
+            .form-row {
+                grid-template-columns: 1fr;
             }
 
-            .timezone-selector-wrapper {
-                width: 100%;
-            }
-
-            .timezone-selector-wrapper select {
-                flex: 1;
+            .btn-group {
+                flex-direction: column;
             }
         }
     </style>
@@ -257,8 +535,21 @@ $latest = end($allLogs);
                     <label for="tzSelect">Часовой пояс:</label>
                     <select id="tzSelect"></select>
                 </div>
+                <?php if ($userRole === 'engineer'): ?>
+                    <button class="btn-edit" onclick="openEditModal()">⚙️ Настройки</button>
+                <?php endif; ?>
                 <button class="btn-back" onclick="goBack()">← На главную</button>
             </div>
+        </div>
+
+        <!-- Критическое предупреждение -->
+        <div id="criticalAlert" class="critical-alert <?= $criticalStatus['critical'] ? 'show' : '' ?>">
+            <h3>⚠️ КРИТИЧЕСКОЕ СОСТОЯНИЕ ДАТЧИКА</h3>
+            <ul id="criticalReasons">
+                <?php foreach ($criticalStatus['reasons'] as $reason): ?>
+                    <li><?= htmlspecialchars($reason) ?></li>
+                <?php endforeach; ?>
+            </ul>
         </div>
 
         <?php if ($latest): ?>
@@ -367,31 +658,208 @@ $latest = end($allLogs);
                 </div>
             </div>
         <?php else: ?>
-            <div class="alert">Данные для датчика не найдены</div>
+            <div style="background: rgba(255, 82, 82, 0.1); border-left: 4px solid var(--danger); color: var(--danger); padding: 12px 16px; border-radius: 4px;">
+                Данные для датчика не найдены
+            </div>
         <?php endif; ?>
+    </div>
+
+    <!-- Модальное окно редактирования -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚙️ Настройки датчика</h2>
+                <button class="close-btn" onclick="closeEditModal()">×</button>
+            </div>
+
+            <div id="modalAlert"></div>
+
+            <!-- Редактирование координат -->
+            <div class="form-section">
+                <h3>📍 Координаты</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Широта (Lat)</label>
+                        <input type="number" id="latInput" step="0.000001" value="<?= $sensorInfo['lat'] ?>">
+                        <div class="hint">-90.0 до 90.0</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Долгота (Lng)</label>
+                        <input type="number" id="lngInput" step="0.000001" value="<?= $sensorInfo['lng'] ?>">
+                        <div class="hint">-180.0 до 180.0</div>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="updateCoordinates()" style="width: 100%;">Сохранить координаты</button>
+            </div>
+
+            <!-- Базовые значения -->
+            <div class="form-section">
+                <h3>📐 Базовые значения крена и тангажа</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Базовое значение Крена (°)</label>
+                        <input type="number" id="rollBaselineInput" step="0.1" value="<?= $sensorInfo['roll_baseline'] ?>">
+                    </div>
+                    <div class="form-group">
+                        <label>Базовое значение Тангажа (°)</label>
+                        <input type="number" id="pitchBaselineInput" step="0.1" value="<?= $sensorInfo['pitch_baseline'] ?>">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-primary" onclick="setBaselineManual()" style="flex: 1;">Установить вручную</button>
+                    <button class="btn-auto" onclick="setBaselineAuto()" style="flex: 1;">Установить автоматически</button>
+                </div>
+            </div>
+
+            <!-- Пороги -->
+            <div class="form-section">
+                <h3>🚨 Пороги критических значений</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Порог Крена (°)</label>
+                        <input type="number" id="rollThresholdInput" step="0.1" min="0.1" value="<?= $sensorInfo['roll_threshold'] ?>">
+                        <div class="hint">Допустимое отклонение от базовой стоимости</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Порог Тангажа (°)</label>
+                        <input type="number" id="pitchThresholdInput" step="0.1" min="0.1" value="<?= $sensorInfo['pitch_threshold'] ?>">
+                        <div class="hint">Допустимое отклонение от базовой стоимости</div>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="updateThresholds()" style="width: 100%;">Сохранить пороги</button>
+            </div>
+
+            <!-- Удаление датчика -->
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="closeEditModal()" style="flex: 2;">Закрыть</button>
+                <button class="btn-danger" onclick="deleteSensor()" style="flex: 1;">🗑️ Удалить датчик</button>
+            </div>
+        </div>
     </div>
 
     <script>
         // Данные датчика из PHP
         const allLogs = <?= json_encode($allLogs) ?>;
         const latestData = <?= json_encode($latest) ?>;
+        const sensorInfo = <?= json_encode($sensorInfo) ?>;
+        const sensorId = '<?= htmlspecialchars($sensorId) ?>';
         
         let charts = {};
-        const chartConfig = {
-            battery: { canvas: 'batteryChart', type: 'charge', label: 'Заряд (%)' },
-            roll: { canvas: 'rollChart', type: 'roll', label: 'Крен (°)' },
-            pitch: { canvas: 'pitchChart', type: 'pitch', label: 'Тангаж (°)' },
-            temperature: { canvas: 'temperatureChart', type: 'temp', label: 'Температура (°C)' }
-        };
 
-        // Инициализация селектора часовых поясов
+        // Инициализация
         document.addEventListener('DOMContentLoaded', function() {
             initTimezoneSelector(document.getElementById('tzSelect'));
             updateLastUpdateTime();
             initCharts();
         });
 
-        // Обновление времени последнего обновления
+        // Функции модального окна
+        function openEditModal() {
+            document.getElementById('editModal').classList.add('show');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('show');
+        }
+
+        function showAlert(message, type = 'success') {
+            const alertDiv = document.getElementById('modalAlert');
+            alertDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => {
+                alertDiv.innerHTML = '';
+            }, 3000);
+        }
+
+        // API запросы
+        function sendSensorRequest(action, data) {
+            const formData = new FormData();
+            formData.append('action', action);
+            formData.append('sensor_id', sensorId);
+            Object.keys(data).forEach(key => {
+                formData.append(key, data[key]);
+            });
+
+            fetch('../main/api_sensor_edit.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    if (action === 'delete_sensor') {
+                        setTimeout(() => window.location.href = 'main.php', 1500);
+                    }
+                    // Обновляем информацию о датчике
+                    if (action === 'set_baseline_auto') {
+                        document.getElementById('rollBaselineInput').value = result.roll_baseline;
+                        document.getElementById('pitchBaselineInput').value = result.pitch_baseline;
+                        sensorInfo.roll_baseline = result.roll_baseline;
+                        sensorInfo.pitch_baseline = result.pitch_baseline;
+                    }
+                } else {
+                    showAlert(result.message, 'error');
+                }
+            })
+            .catch(err => {
+                showAlert('Ошибка при отправке запроса', 'error');
+                console.error(err);
+            });
+        }
+
+        function updateCoordinates() {
+            const lat = parseFloat(document.getElementById('latInput').value);
+            const lng = parseFloat(document.getElementById('lngInput').value);
+
+            if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                showAlert('Неверные координаты', 'error');
+                return;
+            }
+
+            sendSensorRequest('update_coordinates', { lat, lng });
+        }
+
+        function setBaselineManual() {
+            const roll = parseFloat(document.getElementById('rollBaselineInput').value);
+            const pitch = parseFloat(document.getElementById('pitchBaselineInput').value);
+
+            if (isNaN(roll) || isNaN(pitch)) {
+                showAlert('Введите корректные значения', 'error');
+                return;
+            }
+
+            sendSensorRequest('set_baseline_manual', {
+                roll_baseline: roll,
+                pitch_baseline: pitch
+            });
+        }
+
+        function setBaselineAuto() {
+            sendSensorRequest('set_baseline_auto', {});
+        }
+
+        function updateThresholds() {
+            const roll = parseFloat(document.getElementById('rollThresholdInput').value);
+            const pitch = parseFloat(document.getElementById('pitchThresholdInput').value);
+
+            if (isNaN(roll) || isNaN(pitch) || roll <= 0 || pitch <= 0) {
+                showAlert('Пороги должны быть положительными', 'error');
+                return;
+            }
+
+            sendSensorRequest('update_thresholds', {
+                roll_threshold: roll,
+                pitch_threshold: pitch
+            });
+        }
+
+        function deleteSensor() {
+            if (confirm('Вы уверены? Датчик будет удален из организации.')) {
+                sendSensorRequest('delete_sensor', {});
+            }
+        }
+
+        // Функции обновления времени
         function updateLastUpdateTime() {
             const lastUpdateElement = document.getElementById('lastUpdateTime');
             if (lastUpdateElement && latestData) {
@@ -399,7 +867,7 @@ $latest = end($allLogs);
             }
         }
 
-        // Функция для фильтрации данных по времени
+        // Функции для графиков
         function getFilteredData(minutes) {
             if (minutes === 'all') {
                 return allLogs;
@@ -414,12 +882,10 @@ $latest = end($allLogs);
             });
         }
 
-        // Функция конвертации времени для графика
         function convertTimestampsForCharts(logs) {
             return logs.map(log => formatDateInTimezone(log.created_at, 'time'));
         }
 
-        // Создание графика
         function createChart(canvasId, chartData, extraScales = {}) {
             const scales = {
                 x: {
@@ -450,11 +916,9 @@ $latest = end($allLogs);
             });
         }
 
-        // Инициализация графиков
         function initCharts() {
-            const filtered = getFilteredData(360); // Начально 6 часов
+            const filtered = getFilteredData(360);
 
-            // График заряда и напряжения
             charts.battery = createChart('batteryChart', {
                 labels: convertTimestampsForCharts(filtered),
                 datasets: [{
@@ -474,7 +938,6 @@ $latest = end($allLogs);
                 }]
             }, { y: {}, y1: { position: 'right' } });
 
-            // График крена
             charts.roll = createChart('rollChart', {
                 labels: convertTimestampsForCharts(filtered),
                 datasets: [{
@@ -487,7 +950,6 @@ $latest = end($allLogs);
                 }]
             });
 
-            // График тангажа
             charts.pitch = createChart('pitchChart', {
                 labels: convertTimestampsForCharts(filtered),
                 datasets: [{
@@ -500,7 +962,6 @@ $latest = end($allLogs);
                 }]
             });
 
-            // График температуры
             charts.temperature = createChart('temperatureChart', {
                 labels: convertTimestampsForCharts(filtered),
                 datasets: [{
@@ -516,7 +977,6 @@ $latest = end($allLogs);
             setupFilters();
         }
 
-        // Обновление графика
         function updateChart(chartName, minutes) {
             const filtered = getFilteredData(minutes);
             const chart = charts[chartName];
@@ -537,21 +997,16 @@ $latest = end($allLogs);
             chart.update();
         }
 
-        // Установка фильтров
         function setupFilters() {
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const chartName = this.dataset.chart;
                     const minutes = this.dataset.period;
 
-                    // Убираем active класс у других кнопок этого графика
                     document.querySelectorAll(`.filter-btn[data-chart="${chartName}"]`)
                         .forEach(b => b.classList.remove('active'));
                     
-                    // Добавляем active к текущей кнопке
                     this.classList.add('active');
-
-                    // Обновляем график
                     updateChart(chartName, minutes === 'all' ? 'all' : parseInt(minutes));
                 });
             });
@@ -567,7 +1022,14 @@ $latest = end($allLogs);
             });
         });
 
-        // Кнопка возврата
+        // Закрытие модального окна при клике вне его
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('editModal');
+            if (event.target === modal) {
+                closeEditModal();
+            }
+        });
+
         function goBack() {
             window.location.href = 'main.php';
         }
