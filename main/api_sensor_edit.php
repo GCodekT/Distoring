@@ -8,13 +8,13 @@ function respond($success, $message = '', $data = []) {
         'success' => $success,
         'message' => $message,
         'data' => $data
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 // Проверка авторизации
 if (!isset($_SESSION['user_id'])) {
-    respond(false, 'Unauthorized');
+    respond(false, 'Не авторизован');
 }
 
 $userId = $_SESSION['user_id'];
@@ -26,7 +26,7 @@ $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
 if ($action === 'update_coordinates') {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        respond(false, 'Invalid request method');
+        respond(false, 'Неверный метод запроса');
     }
 
     $sensorId = $_POST['sensor_id'] ?? '';
@@ -34,12 +34,12 @@ if ($action === 'update_coordinates') {
     $lng = $_POST['lng'] ?? '';
 
     if (!$sensorId || $lat === '' || $lng === '') {
-        respond(false, 'Missing required fields');
+        respond(false, 'Отсутствуют обязательные поля');
     }
 
     // Проверяем, что инженер может редактировать датчик этой организации
     if ($role !== 'engineer') {
-        respond(false, 'Только Инженеры могут редактировать датчики');
+        respond(false, 'Только инженеры могут редактировать датчики');
     }
 
     // Проверяем, принадлежит ли датчик организации инженера
@@ -48,7 +48,7 @@ if ($action === 'update_coordinates') {
     $sensor = $stmt->fetch();
 
     if (!$sensor) {
-        respond(false, 'Датчик не найден или у вас недостаточно прав');
+        respond(false, 'Датчик не найден или у вас нет прав доступа');
     }
 
     // Обновляем координаты
@@ -58,25 +58,21 @@ if ($action === 'update_coordinates') {
     respond(true, 'Координаты успешно обновлены', ['sensor_id' => $sensorId]);
 }
 
-elseif ($action === 'update_thresholds') {
+elseif ($action === 'update_baselines') {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        respond(false, 'Invalid request method');
+        respond(false, 'Неверный метод запроса');
     }
 
     $sensorId = $_POST['sensor_id'] ?? '';
-    $chargeMin = $_POST['charge_min'] ?? '';
-    $chargeMax = $_POST['charge_max'] ?? '';
-    $tempMin = $_POST['temp_min'] ?? '';
-    $tempMax = $_POST['temp_max'] ?? '';
-    $rollMax = $_POST['roll_max'] ?? '';
-    $pitchMax = $_POST['pitch_max'] ?? '';
+    $rollBaseline = $_POST['roll_baseline'] ?? '';
+    $pitchBaseline = $_POST['pitch_baseline'] ?? '';
 
     if (!$sensorId) {
-        respond(false, 'Missing sensor_id');
+        respond(false, 'Отсутствует sensor_id');
     }
 
     if ($role !== 'engineer') {
-        respond(false, 'Only engineers can edit sensors');
+        respond(false, 'Только инженеры могут редактировать датчики');
     }
 
     // Проверяем, принадлежит ли датчик организации инженера
@@ -85,30 +81,59 @@ elseif ($action === 'update_thresholds') {
     $sensor = $stmt->fetch();
 
     if (!$sensor) {
-        respond(false, 'Sensor not found or you do not have permission');
+        respond(false, 'Датчик не найден или у вас нет прав доступа');
     }
 
-    // Обновляем пороги (если таблица поддерживает)
-    try {
-        $stmt = $pdo->prepare("UPDATE sensors SET 
-            charge_min = NULLIF(?, ''), 
-            charge_max = NULLIF(?, ''),
-            temp_min = NULLIF(?, ''),
-            temp_max = NULLIF(?, ''),
-            roll_max = NULLIF(?, ''),
-            pitch_max = NULLIF(?, '')
-            WHERE id = ?");
-        $stmt->execute([$chargeMin, $chargeMax, $tempMin, $tempMax, $rollMax, $pitchMax, $sensorId]);
-        respond(true, 'Пороги успешно обновлены', ['sensor_id' => $sensorId]);
-    } catch (PDOException $e) {
-        // Если столбцы не существуют, просто логируем
-        respond(true, 'Update processed (some fields may not be supported)', ['sensor_id' => $sensorId]);
+    // Обновляем базовые значения
+    $stmt = $pdo->prepare("UPDATE sensors SET 
+        roll_baseline = NULLIF(?, ''), 
+        pitch_baseline = NULLIF(?, ''),
+        baseline_initialized = 1
+        WHERE id = ?");
+    $stmt->execute([$rollBaseline, $pitchBaseline, $sensorId]);
+
+    respond(true, 'Базовые значения успешно обновлены', ['sensor_id' => $sensorId]);
+}
+
+elseif ($action === 'update_thresholds') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        respond(false, 'Неверный метод запроса');
     }
+
+    $sensorId = $_POST['sensor_id'] ?? '';
+    $rollThreshold = $_POST['roll_threshold'] ?? '';
+    $pitchThreshold = $_POST['pitch_threshold'] ?? '';
+
+    if (!$sensorId) {
+        respond(false, 'Отсутствует sensor_id');
+    }
+
+    if ($role !== 'engineer') {
+        respond(false, 'Только инженеры могут редактировать датчики');
+    }
+
+    // Проверяем, принадлежит ли датчик организации инженера
+    $stmt = $pdo->prepare("SELECT s.id FROM sensors s WHERE s.id = ? AND s.organization_id = ?");
+    $stmt->execute([$sensorId, $orgId]);
+    $sensor = $stmt->fetch();
+
+    if (!$sensor) {
+        respond(false, 'Датчик не найден или у вас нет прав доступа');
+    }
+
+    // Обновляем пороги
+    $stmt = $pdo->prepare("UPDATE sensors SET 
+        roll_threshold = NULLIF(?, ''), 
+        pitch_threshold = NULLIF(?, '')
+        WHERE id = ?");
+    $stmt->execute([$rollThreshold, $pitchThreshold, $sensorId]);
+
+    respond(true, 'Пороги успешно обновлены', ['sensor_id' => $sensorId]);
 }
 
 elseif ($action === 'update_base_value') {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        respond(false, 'Invalid request method');
+        respond(false, 'Неверный метод запроса');
     }
 
     $sensorId = $_POST['sensor_id'] ?? '';
@@ -116,17 +141,17 @@ elseif ($action === 'update_base_value') {
     $fieldValue = $_POST['field_value'] ?? '';
 
     if (!$sensorId || !$fieldName) {
-        respond(false, 'Missing required fields');
+        respond(false, 'Отсутствуют обязательные поля');
     }
 
     if ($role !== 'engineer') {
-        respond(false, 'Only engineers can edit sensors');
+        respond(false, 'Только инженеры могут редактировать датчики');
     }
 
     // Белый список разрешённых полей
     $allowedFields = ['model', 'location_name', 'description'];
     if (!in_array($fieldName, $allowedFields)) {
-        respond(false, 'Invalid field name');
+        respond(false, 'Неверное имя поля');
     }
 
     // Проверяем, принадлежит ли датчик организации инженера
@@ -135,7 +160,7 @@ elseif ($action === 'update_base_value') {
     $sensor = $stmt->fetch();
 
     if (!$sensor) {
-        respond(false, 'Sensor not found or you do not have permission');
+        respond(false, 'Датчик не найден или у вас нет прав доступа');
     }
 
     // Обновляем значение
@@ -143,14 +168,14 @@ elseif ($action === 'update_base_value') {
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$fieldValue, $sensorId]);
 
-    respond(true, 'Field updated successfully', ['field' => $fieldName, 'value' => $fieldValue]);
+    respond(true, 'Поле успешно обновлено', ['field' => $fieldName, 'value' => $fieldValue]);
 }
 
 elseif ($action === 'get_sensor_data') {
     $sensorId = $_GET['sensor_id'] ?? '';
 
     if (!$sensorId) {
-        respond(false, 'Missing sensor_id');
+        respond(false, 'Отсутствует sensor_id');
     }
 
     // Получаем данные датчика
@@ -159,13 +184,13 @@ elseif ($action === 'get_sensor_data') {
     $sensor = $stmt->fetch();
 
     if (!$sensor) {
-        respond(false, 'Sensor not found');
+        respond(false, 'Датчик не найден');
     }
 
-    respond(true, 'Sensor data retrieved', $sensor);
+    respond(true, 'Данные датчика получены', $sensor);
 }
 
 else {
-    respond(false, 'Unknown action');
+    respond(false, 'Неизвестное действие');
 }
 ?>
