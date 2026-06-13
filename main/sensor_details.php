@@ -779,7 +779,7 @@ $criticalStatus = checkCriticalStatus($sensorInfo, $latest);
                 formData.append(key, data[key]);
             });
 
-            fetch('../main/api_sensor_edit.php', {
+            fetch('../api_sensor_edit.php', {
                 method: 'POST',
                 body: formData
             })
